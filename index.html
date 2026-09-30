@@ -13,7 +13,7 @@
     />
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
-    <link rel="stylesheet" href="style.css?v=5" />
+    <link rel="stylesheet" href="style.css?v=6" />
   </head>
 
   <body>
@@ -107,7 +107,8 @@
         <section id="page-map" class="page page-map" hidden>
           <div id="map"></div>
 
-          <!-- Filters, floating over the map -->
+          <!-- Filters, floating over the map. Swipe left (or use the tab) to hide. -->
+          <div class="map-drawer" id="mapDrawer">
           <aside class="map-panel">
             <div class="map-panel-top">
               <input id="mapSearch" type="search" placeholder="Search bin number or place" />
@@ -134,6 +135,11 @@
               </label>
             </div>
           </aside>
+          <button type="button" class="drawer-tab" id="drawerTab" aria-label="Hide filters" aria-expanded="true">
+            <span class="drawer-chevron">&#8249;</span>
+            <span class="drawer-label">Filters</span>
+          </button>
+          </div>
 
           <!-- Walking directions, shown instead of the filters while active -->
           <aside id="directionsPanel" class="directions-panel" hidden></aside>
@@ -228,6 +234,6 @@
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
     <script src="bins.js"></script>
-    <script src="app.js?v=5"></script>
+    <script src="app.js?v=6"></script>
   </body>
 </html>

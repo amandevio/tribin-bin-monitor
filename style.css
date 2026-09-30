@@ -729,16 +729,77 @@ body.map-open main {
   backdrop-filter: blur(8px);
 }
 
-.map-panel {
+/* The filter panel slides off the left edge; its tab stays visible. */
+.map-drawer {
+  position: absolute;
   top: 18px;
   left: 18px;
+  z-index: 10;
+  width: 300px;
+  transition: transform 0.3s ease;
+}
+
+.map-drawer.closed {
+  transform: translateX(calc(-100% - 18px));
+}
+
+.map-drawer.dragging {
+  transition: none;
+}
+
+.map-panel {
+  position: relative;
   display: flex;
   flex-direction: column;
   gap: 12px;
-  width: 300px;
-  max-height: calc(100% - 36px);
+  /* Leave room for the legend at the bottom of the map. */
+  max-height: calc(100vh - var(--topbar-height, 62px) - 150px);
   padding: 16px;
   overflow-y: auto;
+}
+
+.drawer-tab {
+  position: absolute;
+  top: 16px;
+  left: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  width: 30px;
+  padding: 14px 0;
+  color: var(--green);
+  background: rgba(255, 253, 248, 0.96);
+  border: 1px solid var(--line);
+  border-left: 0;
+  border-radius: 0 10px 10px 0;
+  box-shadow: 4px 6px 14px -8px rgba(22, 36, 28, 0.35);
+  font: inherit;
+  cursor: pointer;
+}
+
+.drawer-chevron {
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1;
+  transition: transform 0.3s;
+}
+
+.map-drawer.closed .drawer-chevron {
+  transform: rotate(180deg);
+}
+
+.drawer-label {
+  display: none;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  writing-mode: vertical-rl;
+}
+
+.map-drawer.closed .drawer-label {
+  display: block;
 }
 
 .map-panel-top {
@@ -1173,7 +1234,7 @@ body.map-open main {
 
 /* ---------- Walking directions ---------- */
 
-.page-map.routing .map-panel {
+.page-map.routing .map-drawer {
   display: none;
 }
 
@@ -1553,15 +1614,32 @@ body.map-open .toast {
     justify-content: space-between;
   }
 
-  /* Filters sit at the bottom and fold away. */
-  .map-panel {
+  /* Filters sit at the bottom, fold up, and swipe off to the left. */
+  .map-drawer {
     top: auto;
     bottom: 12px;
     left: 12px;
-    right: 12px;
+    right: 48px;
     width: auto;
-    max-height: 65%;
+  }
+
+  .map-drawer.closed {
+    transform: translateX(calc(-100% - 12px));
+  }
+
+  .map-panel {
+    max-height: calc((100vh - var(--topbar-height, 62px)) * 0.65);
     padding: 12px;
+  }
+
+  .drawer-tab {
+    top: auto;
+    bottom: 14px;
+  }
+
+  /* Pinch to zoom on phones; the buttons would sit under the panel. */
+  .page-map .leaflet-control-zoom {
+    display: none;
   }
 
   .filter-toggle {

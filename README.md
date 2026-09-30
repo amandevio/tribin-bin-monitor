@@ -23,7 +23,8 @@ connection is needed for the map.
   (red = needs emptying, yellow = almost full, green = OK). Nearby bins are
   grouped into circles whose ring shows how many are full. Filter by
   compartment or status, search, and switch between Map, Streets, and
-  Satellite. Click a bin for details or to mark it emptied.
+  Satellite. Click a bin for details or to mark it emptied. Swipe the filter
+  panel to the left (or tap its tab) to hide it and see more of the map.
 - **Directions**: tap **Directions** on any bin and the map shows the walking
   route from where you are, with turn-by-turn steps. Your location updates as
   you walk, and it tells you when you've arrived. (Your browser will ask for

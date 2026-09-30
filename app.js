@@ -895,6 +895,86 @@ document.querySelector("#filterToggle").addEventListener("click", () => {
 });
 
 // ---------------------------------------------------------------------------
+// Filter panel: swipe it off the side of the screen, or tap its tab
+// ---------------------------------------------------------------------------
+
+const DRAWER_KEY = "tribin-filters-hidden";
+const drawer = document.querySelector("#mapDrawer");
+const drawerTab = document.querySelector("#drawerTab");
+let swipe = null;
+let ignoreTabClick = false;
+
+function setDrawerOpen(open) {
+  drawer.classList.toggle("closed", !open);
+  drawerTab.setAttribute("aria-expanded", String(open));
+  drawerTab.setAttribute("aria-label", open ? "Hide filters" : "Show filters");
+  try {
+    localStorage.setItem(DRAWER_KEY, open ? "0" : "1");
+  } catch {
+    // It just won't be remembered next time.
+  }
+}
+
+drawerTab.addEventListener("click", () => {
+  if (ignoreTabClick) return;
+  setDrawerOpen(drawer.classList.contains("closed"));
+});
+
+// The panel follows your finger while you swipe sideways. Up-and-down
+// swipes are left alone so the panel can still scroll.
+drawer.addEventListener(
+  "touchstart",
+  (event) => {
+    const touch = event.touches[0];
+    swipe = { x: touch.clientX, y: touch.clientY, dx: 0, sideways: null };
+  },
+  { passive: true }
+);
+
+drawer.addEventListener(
+  "touchmove",
+  (event) => {
+    if (!swipe) return;
+    const touch = event.touches[0];
+    swipe.dx = touch.clientX - swipe.x;
+    const dy = touch.clientY - swipe.y;
+    if (swipe.sideways === null && Math.max(Math.abs(swipe.dx), Math.abs(dy)) > 10) {
+      swipe.sideways = Math.abs(swipe.dx) > Math.abs(dy);
+    }
+    if (!swipe.sideways) return;
+
+    const closed = drawer.classList.contains("closed");
+    drawer.classList.add("dragging");
+    drawer.style.transform = closed
+      ? `translateX(calc(-100% - ${drawer.offsetLeft}px + ${Math.max(0, swipe.dx)}px))`
+      : `translateX(${Math.min(0, swipe.dx)}px)`;
+  },
+  { passive: true }
+);
+
+function endSwipe() {
+  if (!swipe) return;
+  drawer.classList.remove("dragging");
+  drawer.style.transform = "";
+  if (swipe.sideways && Math.abs(swipe.dx) > 60) {
+    setDrawerOpen(swipe.dx > 0);
+    // A swipe that ends on the tab shouldn't also count as a tap.
+    ignoreTabClick = true;
+    setTimeout(() => (ignoreTabClick = false), 400);
+  }
+  swipe = null;
+}
+
+drawer.addEventListener("touchend", endSwipe);
+drawer.addEventListener("touchcancel", endSwipe);
+
+try {
+  if (localStorage.getItem(DRAWER_KEY) === "1") setDrawerOpen(false);
+} catch {
+  // Storage blocked: start with the panel open.
+}
+
+// ---------------------------------------------------------------------------
 // Walking directions, shown right on the map
 // ---------------------------------------------------------------------------
 
