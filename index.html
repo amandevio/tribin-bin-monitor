@@ -13,7 +13,7 @@
     />
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
-    <link rel="stylesheet" href="style.css?v=2" />
+    <link rel="stylesheet" href="style.css?v=3" />
   </head>
 
   <body>
@@ -118,6 +118,9 @@
             </div>
           </aside>
 
+          <!-- Walking directions, shown instead of the filters while active -->
+          <aside id="directionsPanel" class="directions-panel" hidden></aside>
+
           <div class="map-styles">
             <button type="button" data-map-style="map" class="active">Map</button>
             <button type="button" data-map-style="streets">Streets</button>
@@ -207,6 +210,6 @@
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
     <script src="bins.js"></script>
-    <script src="app.js?v=2"></script>
+    <script src="app.js?v=3"></script>
   </body>
 </html>

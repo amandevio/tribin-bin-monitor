@@ -277,6 +277,7 @@ function showPage(page) {
   document.body.classList.toggle("map-open", page === "map");
   document.documentElement.style.setProperty("--topbar-height", `${document.querySelector(".topbar").offsetHeight}px`);
 
+  if (page !== "map" && typeof stopDirections === "function") stopDirections();
   if (page === "map") setupMap();
   if (page === "settings") renderSettings();
   render();
@@ -404,7 +405,7 @@ document.querySelector("#search").addEventListener("input", (event) => {
   renderBins();
 });
 
-// "Mark emptied" and "Show on map" buttons, on cards and in map popups.
+// Buttons on cards, in map popups, and in the directions panel.
 document.addEventListener("click", (event) => {
   const button = event.target.closest("[data-action]");
   if (!button) return;
@@ -412,8 +413,11 @@ document.addEventListener("click", (event) => {
 
   if (button.dataset.action === "empty") {
     map?.closePopup();
+    if (trip?.binId === binId) stopDirections();
     markEmptied(binId);
   }
+  if (button.dataset.action === "directions") startDirections(binId);
+  if (button.dataset.action === "stop-directions") stopDirections();
   if (button.dataset.action === "map") {
     showPage("map");
     focusBin(binId);
@@ -531,12 +535,6 @@ function clusterIcon(cluster) {
   });
 }
 
-// Walking directions from wherever you are to the bin. On phones this opens
-// the Google Maps app if it's installed.
-function directionsUrl(bin) {
-  return `https://www.google.com/maps/dir/?api=1&destination=${bin.latitude},${bin.longitude}&travelmode=walking`;
-}
-
 function popupHtml(bin) {
   const rows = COMPARTMENTS.map(({ key, label }) => {
     const value = Math.round(data.levels[bin.id][key]);
@@ -556,7 +554,7 @@ function popupHtml(bin) {
       ${rows}
       <p class="popup-emptied">${emptiedText(bin.id)}</p>
       <div class="popup-buttons">
-        <a class="button" href="${directionsUrl(bin)}" target="_blank" rel="noopener">Directions</a>
+        <button type="button" class="button" data-action="directions" data-id="${bin.id}">Directions</button>
         <button type="button" class="button primary" data-action="empty" data-id="${bin.id}">Mark emptied</button>
       </div>
     </div>
@@ -693,6 +691,204 @@ document.querySelector(".map-styles").addEventListener("click", (event) => {
 document.querySelector("#filterToggle").addEventListener("click", () => {
   document.querySelector(".map-panel").classList.toggle("open");
 });
+
+// ---------------------------------------------------------------------------
+// Walking directions, shown right on the map
+// ---------------------------------------------------------------------------
+
+// Free walking-route service built on OpenStreetMap.
+const ROUTE_SERVICE = "https://routing.openstreetmap.de/routed-foot/route/v1/foot";
+const ARRIVED_METERS = 25;
+
+// The trip in progress: { binId, layer, userMarker, watchId, steps, distance, duration, ... }
+let trip = null;
+
+function startDirections(binId) {
+  const bin = allBins.find((b) => b.id === binId);
+  if (!bin || !map) return;
+  stopDirections();
+  map.closePopup();
+
+  trip = { binId, layer: L.layerGroup().addTo(map), userMarker: null, watchId: null, steps: [] };
+  document.querySelector(".page-map").classList.add("routing");
+  document.querySelector("#directionsPanel").hidden = false;
+
+  if (!navigator.geolocation) {
+    renderDirections(bin, { error: "This browser can't share your location, so directions aren't available." });
+    return;
+  }
+
+  renderDirections(bin, { loading: true });
+  navigator.geolocation.getCurrentPosition(
+    (position) => loadRoute(bin, position.coords),
+    (error) => {
+      if (trip?.binId === bin.id) renderDirections(bin, { error: locationErrorText(error) });
+    },
+    { enableHighAccuracy: true, timeout: 15000 }
+  );
+}
+
+async function loadRoute(bin, coords) {
+  if (trip?.binId !== bin.id) return;
+  const from = [coords.latitude, coords.longitude];
+  const to = [bin.latitude, bin.longitude];
+
+  try {
+    const url = `${ROUTE_SERVICE}/${from[1]},${from[0]};${to[1]},${to[0]}?overview=full&geometries=geojson&steps=true`;
+    const result = await (await fetch(url)).json();
+    if (result.code !== "Ok") throw new Error(result.message || "No route found");
+    if (trip?.binId !== bin.id) return;
+
+    const best = result.routes[0];
+    const path = best.geometry.coordinates.map(([lng, lat]) => [lat, lng]);
+    L.polyline(path, { className: "route-line", weight: 6 }).addTo(trip.layer);
+    // Paths end at the nearest walkway, so dash the last few steps to the bin.
+    L.polyline([path[path.length - 1], to], { className: "route-line", weight: 4, dashArray: "2 8" }).addTo(trip.layer);
+
+    trip.steps = best.legs[0].steps;
+    trip.distance = best.distance;
+    trip.duration = best.duration;
+    trip.points = [...path, to, from];
+  } catch {
+    // If the route service is down, fall back to a straight line.
+    if (trip?.binId !== bin.id) return;
+    L.polyline([from, to], { className: "route-line", weight: 5, dashArray: "6 10" }).addTo(trip.layer);
+    trip.steps = [];
+    trip.distance = distanceMeters(from, to);
+    trip.duration = trip.distance / 1.3;
+    trip.straightLine = true;
+    trip.points = [from, to];
+  }
+
+  // Zoom once the steps are showing, so the panel's final size is known.
+  moveUser(bin, from);
+  fitRoute(trip.points);
+  trip.watchId = navigator.geolocation.watchPosition(
+    (position) => moveUser(bin, [position.coords.latitude, position.coords.longitude]),
+    () => {},
+    { enableHighAccuracy: true }
+  );
+}
+
+// Zoom to the route, keeping it clear of the directions panel
+// (beside it on computers, above it on phones).
+function fitRoute(points) {
+  const panel = document.querySelector("#directionsPanel");
+  const onPhone = window.innerWidth <= 700;
+  map.fitBounds(L.latLngBounds(points), {
+    paddingTopLeft: onPhone ? [30, 70] : [panel.offsetWidth + 50, 50],
+    paddingBottomRight: onPhone ? [30, panel.offsetHeight + 30] : [50, 50],
+    maxZoom: 18,
+  });
+}
+
+// Move the blue "you are here" dot and check whether you've arrived.
+function moveUser(bin, here) {
+  if (trip?.binId !== bin.id) return;
+  if (!trip.userMarker) {
+    trip.userMarker = L.marker(here, {
+      icon: L.divIcon({ className: "", html: '<div class="you-dot"></div>', iconSize: [22, 22] }),
+      zIndexOffset: 2000,
+      interactive: false,
+    }).addTo(trip.layer);
+  } else {
+    trip.userMarker.setLatLng(here);
+  }
+
+  trip.remaining = distanceMeters(here, [bin.latitude, bin.longitude]);
+  trip.arrived = trip.remaining <= ARRIVED_METERS;
+  renderDirections(bin);
+}
+
+function stopDirections() {
+  if (!trip) return;
+  if (trip.watchId !== null) navigator.geolocation.clearWatch(trip.watchId);
+  trip.layer.remove();
+  trip = null;
+  document.querySelector(".page-map").classList.remove("routing");
+  document.querySelector("#directionsPanel").hidden = true;
+}
+
+function renderDirections(bin, { loading = false, error = "" } = {}) {
+  let body;
+  if (loading) {
+    body = '<p class="directions-status">Finding your location…</p>';
+  } else if (error) {
+    body = `
+      <p class="directions-status">${escapeHtml(error)}</p>
+      <button type="button" class="button primary full-width" data-action="directions" data-id="${bin.id}">Try again</button>
+    `;
+  } else if (trip.arrived) {
+    body = `
+      <p class="directions-arrived">You've arrived at Bin ${bin.id}.</p>
+      <button type="button" class="button primary full-width" data-action="empty" data-id="${bin.id}">Mark emptied</button>
+    `;
+  } else {
+    const steps = trip.steps
+      .map((step) => `<li><span>${escapeHtml(stepText(step))}</span>${step.distance ? `<b>${formatDistance(step.distance)}</b>` : ""}</li>`)
+      .join("");
+    body = `
+      <p class="directions-summary">
+        <strong>${Math.max(1, Math.round(trip.duration / 60))} min</strong>
+        <span>${formatDistance(trip.distance)} walk · ${formatDistance(trip.remaining ?? trip.distance)} away</span>
+      </p>
+      ${trip.straightLine ? '<p class="directions-status">Street directions are unavailable right now, so this is a straight-line guide.</p>' : ""}
+      ${steps ? `<ol class="directions-steps">${steps}</ol>` : ""}
+    `;
+  }
+
+  document.querySelector("#directionsPanel").innerHTML = `
+    <div class="directions-head">
+      <div>
+        <p class="map-label">Walking to</p>
+        <strong>Bin ${bin.id}</strong>
+        <span>${escapeHtml(bin.location)}</span>
+      </div>
+      <button type="button" class="button" data-action="stop-directions">End</button>
+    </div>
+    ${body}
+  `;
+}
+
+// Turn a route step into a short instruction, e.g. "Turn left onto J Street".
+function stepText(step) {
+  const { type, modifier, bearing_after: bearing } = step.maneuver;
+  const road = step.name ? ` onto ${step.name}` : "";
+
+  if (type === "depart") return `Head ${compassDirection(bearing)}${step.name ? ` on ${step.name}` : ""}`;
+  if (type === "arrive") return `Arrive at Bin ${trip.binId}`;
+  if (type === "roundabout" || type === "rotary") return `Go around the roundabout${road}`;
+  if (modifier === "uturn") return "Turn around";
+  if (!modifier || modifier === "straight") return `Continue straight${road}`;
+  if (type === "turn" || type === "end of road") return `Turn ${modifier}${road}`;
+  return `Keep ${modifier.replace("slight ", "")}${road}`;
+}
+
+function compassDirection(bearing = 0) {
+  return ["north", "northeast", "east", "southeast", "south", "southwest", "west", "northwest"][Math.round(bearing / 45) % 8];
+}
+
+// Feet for short distances, miles for longer ones.
+function formatDistance(meters) {
+  const feet = meters * 3.281;
+  if (feet < 1000) return `${Math.max(10, Math.round(feet / 10) * 10)} ft`;
+  return `${(meters / 1609).toFixed(1)} mi`;
+}
+
+// Straight-line distance between two [lat, lng] points, in meters.
+function distanceMeters([lat1, lng1], [lat2, lng2]) {
+  const toRad = (deg) => (deg * Math.PI) / 180;
+  const a =
+    Math.sin(toRad(lat2 - lat1) / 2) ** 2 +
+    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(toRad(lng2 - lng1) / 2) ** 2;
+  return 2 * 6371000 * Math.asin(Math.sqrt(a));
+}
+
+function locationErrorText(error) {
+  if (error.code === 1) return "Location access is off. Allow location for this site in your browser settings, then try again.";
+  if (error.code === 3) return "Finding your location took too long. Make sure location is on, then try again.";
+  return "We couldn't find your location. Try again in a moment.";
+}
 
 // ---------------------------------------------------------------------------
 // Settings page (admins only)
