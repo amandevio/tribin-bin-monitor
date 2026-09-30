@@ -13,7 +13,7 @@
     />
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
-    <link rel="stylesheet" href="style.css?v=4" />
+    <link rel="stylesheet" href="style.css?v=5" />
   </head>
 
   <body>
@@ -80,6 +80,10 @@
             <button type="button" class="summary-box is-almost" data-filter="almost">
               <span class="summary-number" id="countAlmost">0</span>
               <span>Almost full</span>
+            </button>
+            <button type="button" class="summary-box is-offline" data-filter="offline">
+              <span class="summary-number" id="countOffline">0</span>
+              <span>Sensor offline</span>
             </button>
             <button type="button" class="summary-box is-all" data-filter="all">
               <span class="summary-number" id="countAll">0</span>
@@ -149,6 +153,7 @@
               <span><i class="fill-ok"></i>OK</span>
               <span><i class="fill-almost"></i>Almost full</span>
               <span><i class="fill-full"></i>Needs emptying</span>
+              <span><i class="fill-offline"></i>Offline</span>
             </div>
           </div>
         </section>
@@ -223,6 +228,6 @@
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
     <script src="bins.js"></script>
-    <script src="app.js?v=4"></script>
+    <script src="app.js?v=5"></script>
   </body>
 </html>

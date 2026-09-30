@@ -11,8 +11,11 @@ connection is needed for the map.
 - **Go to nearest full bin**: one big button that finds the closest bin that
   needs emptying and starts walking directions to it. After you mark it
   emptied, it offers the next closest one.
+- **Sensor offline**: bins whose sensor has stopped reporting show in gray
+  with the time of their last reading. Find them with the **Sensor offline**
+  box on the Bins page or the status filter on the map.
 - **Bins**: every bin as a card with three fill bars. Click **Need emptying**,
-  **Almost full**, or **All bins** at the top to filter, and sort by
+  **Almost full**, **Sensor offline**, or **All bins** at the top to filter, and sort by
   **Nearest** (shows how far away each bin is) or **Fullest**. Workers press
   **Mark emptied** after emptying a bin, and can tap **Undo** for a few
   seconds if they tapped the wrong one.

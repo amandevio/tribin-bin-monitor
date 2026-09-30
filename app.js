@@ -11,7 +11,8 @@ const COMPARTMENTS = [
   { key: "aluminum", label: "Aluminum" },
 ];
 
-const STATUS_TEXT = { full: "Needs emptying", almost: "Almost full", ok: "OK" };
+const STATUS_TEXT = { full: "Needs emptying", almost: "Almost full", ok: "OK", offline: "Sensor offline" };
+const MAP_STATUSES = ["full", "almost", "ok", "offline"];
 
 // Bin locations come from bins.js (the project spreadsheet).
 const allBins = Array.isArray(window.bins) ? window.bins : [];
@@ -41,6 +42,7 @@ function defaultData() {
       emptiedBy: null,
     };
   });
+  seedSensorStatus(levels);
 
   return {
     settings: { fullAt: 80, almostAt: 50 },
@@ -61,7 +63,11 @@ function defaultData() {
 function loadData() {
   try {
     const saved = JSON.parse(localStorage.getItem(SAVE_KEY));
-    if (saved && saved.levels && saved.workers) return saved;
+    if (saved && saved.levels && saved.workers) {
+      // Data saved before sensors were tracked gets a sensor status now.
+      if (!("online" in Object.values(saved.levels)[0])) seedSensorStatus(saved.levels);
+      return saved;
+    }
   } catch {
     // Storage blocked or unreadable: start fresh.
   }
@@ -74,6 +80,15 @@ function saveData() {
   } catch {
     // The app still works, it just won't remember changes.
   }
+}
+
+// A few sensors start offline so the demo shows what that looks like.
+function seedSensorStatus(levels) {
+  const random = seededRandom(7);
+  Object.values(levels).forEach((level) => {
+    level.online = random() > 0.035;
+    level.lastReading = Date.now() - (level.online ? 0 : (10 + random() * 80) * 60 * 1000);
+  });
 }
 
 // Same starting numbers on every fresh load.
@@ -101,6 +116,16 @@ function fillSpeed(binId) {
 function readSensors() {
   allBins.forEach((bin) => {
     const level = data.levels[bin.id];
+
+    // In the demo, sensors occasionally drop out and come back later.
+    // An offline sensor sends nothing, so its bin keeps its last reading.
+    // With real sensors, mark a bin offline when it hasn't reported in
+    // about 30 minutes.
+    if (level.online && Math.random() < 0.0003) level.online = false;
+    else if (!level.online && Math.random() < 0.01) level.online = true;
+    if (!level.online) return;
+    level.lastReading = Date.now();
+
     const speed = fillSpeed(bin.id);
     level.trash = Math.min(100, level.trash + Math.random() * 0.25 * speed);
     level.recycle = Math.min(100, level.recycle + Math.random() * 0.18 * speed);
@@ -135,8 +160,17 @@ function fullest(binId) {
   return Math.max(level.trash, level.recycle, level.aluminum);
 }
 
+function isOnline(binId) {
+  return data.levels[binId].online !== false;
+}
+
 function binStatus(binId) {
+  if (!isOnline(binId)) return "offline";
   return statusOf(fullest(binId));
+}
+
+function offlineText(binId) {
+  return `No signal · last reading ${timeAgo(data.levels[binId].lastReading)}`;
 }
 
 function currentUser() {
@@ -434,13 +468,14 @@ function render() {
 // ---------------------------------------------------------------------------
 
 function renderBins() {
-  const counts = { full: 0, almost: 0 };
+  const counts = { full: 0, almost: 0, offline: 0 };
   allBins.forEach((bin) => {
     const status = binStatus(bin.id);
     if (status in counts) counts[status]++;
   });
   document.querySelector("#countFull").textContent = counts.full;
   document.querySelector("#countAlmost").textContent = counts.almost;
+  document.querySelector("#countOffline").textContent = counts.offline;
   document.querySelector("#countAll").textContent = allBins.length;
   document.querySelectorAll("[data-filter]").forEach((box) => {
     box.classList.toggle("selected", box.dataset.filter === binFilter);
@@ -473,7 +508,7 @@ function renderBins() {
     shownBinIds = ids;
     grid.innerHTML = visible.length
       ? visible.map(cardHtml).join("")
-      : `<p class="empty">${binFilter === "full" ? "All clear! No bins need emptying right now." : "No bins match."}</p>`;
+      : `<p class="empty">${EMPTY_TEXT[binFilter] || "No bins match."}</p>`;
   }
 
   visible.forEach((bin) => {
@@ -481,6 +516,11 @@ function renderBins() {
     if (card) updateCard(card, bin);
   });
 }
+
+const EMPTY_TEXT = {
+  full: "All clear! No bins need emptying right now.",
+  offline: "All sensors are working.",
+};
 
 function cardHtml(bin) {
   const bars = COMPARTMENTS.map(
@@ -501,6 +541,7 @@ function cardHtml(bin) {
       </div>
       <p class="card-location">${escapeHtml(bin.location)}</p>
       <p class="card-distance"></p>
+      <p class="card-sensor"></p>
       <div class="bars">${bars}</div>
       <p class="card-emptied"></p>
       <div class="card-buttons">
@@ -525,10 +566,11 @@ function updateCard(card, bin) {
     bar.querySelector(".bar-percent").textContent = `${value}%`;
     const fill = bar.querySelector(".bar-fill");
     fill.style.height = `${value}%`;
-    fill.className = `bar-fill fill-${statusOf(value)}`;
+    fill.className = `bar-fill fill-${status === "offline" ? "offline" : statusOf(value)}`;
   });
 
   card.querySelector(".card-emptied").textContent = emptiedText(bin.id);
+  card.querySelector(".card-sensor").textContent = status === "offline" ? offlineText(bin.id) : "";
   card.querySelector(".card-distance").textContent = myLocation ? `${formatDistance(metersToBin(bin))} away` : "";
 }
 
@@ -591,7 +633,7 @@ const MAP_STYLES = {
   satellite: { url: SATELLITE_TILES, className: "" },
 };
 
-const mapFilters = { search: "", compartment: "any", statuses: new Set(["full", "almost", "ok"]) };
+const mapFilters = { search: "", compartment: "any", statuses: new Set(MAP_STATUSES) };
 const markerHtml = new Map();
 let markerGroup = null;
 let groupNearby = true;
@@ -656,6 +698,7 @@ function makeMarkerGroup() {
 
 // Status shown on the map: the chosen compartment, or the fullest one.
 function mapStatus(bin) {
+  if (!isOnline(bin.id)) return "offline";
   const level = data.levels[bin.id];
   return statusOf(mapFilters.compartment === "any" ? fullest(bin.id) : level[mapFilters.compartment]);
 }
@@ -663,23 +706,26 @@ function mapStatus(bin) {
 // Each marker is a tiny tri-bin: one bar per compartment at its fill level.
 function markerIconHtml(bin) {
   const level = data.levels[bin.id];
+  const offline = !isOnline(bin.id);
   const bars = COMPARTMENTS.map(({ key }) => {
     const value = Math.round(level[key]);
     const dim = mapFilters.compartment !== "any" && mapFilters.compartment !== key ? " dim" : "";
-    return `<span class="fill-${statusOf(value)}${dim}" style="height: ${Math.max(value, 8)}%"></span>`;
+    return `<span class="fill-${offline ? "offline" : statusOf(value)}${dim}" style="height: ${Math.max(value, 8)}%"></span>`;
   }).join("");
   return `<div class="bin-pin pin-${mapStatus(bin)}">${bars}</div>`;
 }
 
-// Group circles show how many bins they hold, ringed red/yellow/green by status.
+// Group circles show how many bins they hold, ringed by status
+// (red, yellow, green, and gray for offline sensors).
 function clusterIcon(cluster) {
-  const counts = { full: 0, almost: 0, ok: 0 };
+  const counts = { full: 0, almost: 0, ok: 0, offline: 0 };
   const children = cluster.getAllChildMarkers();
   children.forEach((marker) => counts[marker.options.status || "ok"]++);
 
   const full = (counts.full / children.length) * 100;
   const almost = full + (counts.almost / children.length) * 100;
-  const ring = `conic-gradient(var(--full) 0 ${full}%, var(--almost) ${full}% ${almost}%, var(--ok) ${almost}% 100%)`;
+  const ok = almost + (counts.ok / children.length) * 100;
+  const ring = `conic-gradient(var(--full) 0 ${full}%, var(--almost) ${full}% ${almost}%, var(--ok) ${almost}% ${ok}%, var(--offline) ${ok}% 100%)`;
   const size = children.length >= 20 ? 50 : children.length >= 8 ? 44 : 38;
 
   return L.divIcon({
@@ -690,12 +736,13 @@ function clusterIcon(cluster) {
 }
 
 function popupHtml(bin) {
+  const offline = !isOnline(bin.id);
   const rows = COMPARTMENTS.map(({ key, label }) => {
     const value = Math.round(data.levels[bin.id][key]);
     return `
       <div class="popup-row">
         <span>${label}</span>
-        <div class="popup-track"><div class="fill-${statusOf(value)}" style="width: ${value}%"></div></div>
+        <div class="popup-track"><div class="fill-${offline ? "offline" : statusOf(value)}" style="width: ${value}%"></div></div>
         <b>${value}%</b>
       </div>
     `;
@@ -706,6 +753,7 @@ function popupHtml(bin) {
       <strong>Bin ${bin.id}</strong>
       <p>${escapeHtml(bin.location)}</p>
       ${rows}
+      ${offline ? `<p class="popup-offline">Sensor offline. ${offlineText(bin.id)}, so these levels may be out of date.</p>` : ""}
       <p class="popup-emptied">${emptiedText(bin.id)}</p>
       <div class="popup-buttons">
         <button type="button" class="button" data-action="directions" data-id="${bin.id}">Directions</button>
@@ -717,7 +765,7 @@ function popupHtml(bin) {
 
 function renderMap() {
   if (!map) return;
-  const counts = { full: 0, almost: 0, ok: 0 };
+  const counts = { full: 0, almost: 0, ok: 0, offline: 0 };
   const visible = [];
   let iconsChanged = false;
 
@@ -752,7 +800,7 @@ function renderMap() {
   }
   shownMarkers = wanted;
 
-  document.querySelector("#mapStatuses").innerHTML = ["full", "almost", "ok"]
+  document.querySelector("#mapStatuses").innerHTML = MAP_STATUSES
     .map(
       (status) => `
         <button type="button" class="status-toggle st-${status}${mapFilters.statuses.has(status) ? " on" : ""}" data-status="${status}">
@@ -781,7 +829,7 @@ function focusBin(binId) {
   const marker = mapMarkers.get(binId);
   if (!map || !marker) return;
   if (!shownMarkers.has(binId)) {
-    mapFilters.statuses = new Set(["full", "almost", "ok"]);
+    mapFilters.statuses = new Set(MAP_STATUSES);
     renderMap();
   }
   if (groupNearby) {
@@ -816,8 +864,8 @@ document.querySelector("#mapStatuses").addEventListener("click", (event) => {
   const status = button.dataset.status;
   const statuses = mapFilters.statuses;
   if (statuses.size === 1 && statuses.has(status)) {
-    mapFilters.statuses = new Set(["full", "almost", "ok"]);
-  } else if (statuses.size === 3) {
+    mapFilters.statuses = new Set(MAP_STATUSES);
+  } else if (statuses.size === MAP_STATUSES.length) {
     mapFilters.statuses = new Set([status]);
   } else if (statuses.has(status)) {
     statuses.delete(status);

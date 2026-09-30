@@ -14,6 +14,8 @@
   --almost-soft: #fbefd4;
   --ok: #1f8a5b;
   --ok-soft: #e0f1e7;
+  --offline: #8f978f;
+  --offline-soft: #eceee8;
 
   --radius: 14px;
   --shadow: 0 1px 3px rgba(22, 36, 28, 0.08);
@@ -462,7 +464,7 @@ main {
 
 .summary {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   gap: 14px;
   margin-bottom: 18px;
 }
@@ -493,6 +495,10 @@ main {
 
 .summary-box.is-full .summary-number {
   color: var(--full);
+}
+
+.summary-box.is-offline .summary-number {
+  color: var(--offline);
 }
 
 .summary-box.is-almost .summary-number {
@@ -540,6 +546,11 @@ main {
   border-top-color: var(--almost);
 }
 
+.bin-card.is-offline {
+  border-top-color: var(--offline);
+  border-top-style: dashed;
+}
+
 .bin-card.is-full {
   border-top-color: var(--full);
 }
@@ -573,6 +584,11 @@ main {
 .badge-almost {
   color: #8a5a00;
   background: var(--almost-soft);
+}
+
+.badge-offline {
+  color: #5d655f;
+  background: var(--offline-soft);
 }
 
 .badge-ok {
@@ -630,6 +646,21 @@ main {
 
 .fill-almost {
   background: var(--almost);
+}
+
+.fill-offline {
+  background: var(--offline);
+}
+
+.card-sensor {
+  margin: -8px 0 12px;
+  color: #5d655f;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.card-sensor:empty {
+  display: none;
 }
 
 .fill-full {
@@ -863,6 +894,10 @@ body.map-open main {
   background: var(--almost);
 }
 
+.st-offline i {
+  background: var(--offline);
+}
+
 .st-ok i {
   background: var(--ok);
 }
@@ -999,6 +1034,11 @@ body.map-open main {
   border-color: var(--almost);
 }
 
+.bin-pin.pin-offline {
+  border-color: var(--offline);
+  border-style: dashed;
+}
+
 .bin-pin.pin-full {
   border-color: var(--full);
   box-shadow:
@@ -1073,6 +1113,15 @@ body.map-open main {
 .popup p {
   margin: 2px 0 10px !important;
   color: var(--muted);
+}
+
+.popup .popup-offline {
+  margin: 6px 0 0 !important;
+  padding: 8px 10px;
+  color: #5d655f;
+  background: var(--offline-soft);
+  border-radius: 8px;
+  font-size: 12.5px;
 }
 
 .popup .popup-emptied {
@@ -1470,6 +1519,7 @@ body.map-open .toast {
   }
 
   .summary {
+    grid-template-columns: repeat(2, 1fr);
     gap: 8px;
   }
 
