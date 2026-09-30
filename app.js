@@ -20,6 +20,7 @@ let data = loadData();
 let currentPage = "bins";
 let binFilter = "full";
 let searchText = "";
+let binSort = "fullest"; // "fullest" or "nearest"
 let shownBinIds = "";
 let map = null;
 const mapMarkers = new Map();
@@ -170,12 +171,19 @@ function escapeHtml(text) {
   );
 }
 
-function showToast(message) {
+// A short message at the bottom of the screen, with an optional button.
+function showToast(message, action = null) {
   const toast = document.querySelector("#toast");
-  toast.textContent = message;
+  toast.innerHTML = `<span>${escapeHtml(message)}</span>${action ? `<button type="button" class="toast-action">${escapeHtml(action.label)}</button>` : ""}`;
+  if (action) {
+    toast.querySelector("button").addEventListener("click", () => {
+      toast.hidden = true;
+      action.onClick();
+    });
+  }
   toast.hidden = false;
   clearTimeout(showToast.timer);
-  showToast.timer = setTimeout(() => (toast.hidden = true), 3000);
+  showToast.timer = setTimeout(() => (toast.hidden = true), action ? 6000 : 3000);
 }
 
 // ---------------------------------------------------------------------------
@@ -192,10 +200,126 @@ function emptyBin(binId, workerId) {
 }
 
 function markEmptied(binId) {
+  const before = { ...data.levels[binId] };
   emptyBin(binId, data.currentUserId);
   saveData();
   render();
-  showToast(`Bin ${binId} marked as emptied.`);
+  showToast(`Bin ${binId} marked as emptied.`, { label: "Undo", onClick: () => undoEmptied(binId, before) });
+}
+
+// Put a bin back the way it was, in case "Mark emptied" was tapped by mistake.
+function undoEmptied(binId, before) {
+  data.levels[binId] = before;
+  const entry = data.emptiedLog.findIndex((e) => e.binId === binId && e.workerId === data.currentUserId);
+  if (entry !== -1) data.emptiedLog.splice(entry, 1);
+  if (nextPromptFor === binId) stopDirections();
+  saveData();
+  shownBinIds = "";
+  render();
+  showToast(`Undone. Bin ${binId} is back to how it was.`);
+}
+
+// ---------------------------------------------------------------------------
+// Your location (for "nearest" sorting and the next-bin button)
+// ---------------------------------------------------------------------------
+
+let myLocation = null; // [latitude, longitude]
+let myLocationAt = 0;
+let locationWatch = null;
+
+function setMyLocation(here) {
+  myLocation = here;
+  myLocationAt = Date.now();
+}
+
+function getMyLocation() {
+  return new Promise((resolve, reject) => {
+    if (!navigator.geolocation) return reject({ code: 0 });
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        setMyLocation([position.coords.latitude, position.coords.longitude]);
+        resolve(myLocation);
+      },
+      reject,
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 30000 }
+    );
+  });
+}
+
+// Keep the location fresh while bins are sorted by distance.
+function startLocationWatch() {
+  if (locationWatch !== null || !navigator.geolocation) return;
+  locationWatch = navigator.geolocation.watchPosition(
+    (position) => {
+      const here = [position.coords.latitude, position.coords.longitude];
+      const moved = !myLocation || distanceMeters(myLocation, here) > 15;
+      setMyLocation(here);
+      if (moved && currentPage === "bins") renderBins();
+    },
+    () => {},
+    { enableHighAccuracy: true, maximumAge: 10000 }
+  );
+}
+
+function stopLocationWatch() {
+  if (locationWatch !== null) navigator.geolocation.clearWatch(locationWatch);
+  locationWatch = null;
+}
+
+function metersToBin(bin) {
+  return myLocation ? distanceMeters(myLocation, [bin.latitude, bin.longitude]) : Infinity;
+}
+
+function nearestFullBin(skipBinId = null) {
+  return (
+    allBins
+      .filter((bin) => bin.id !== skipBinId && binStatus(bin.id) === "full")
+      .sort((a, b) => metersToBin(a) - metersToBin(b))[0] || null
+  );
+}
+
+async function sortByNearest() {
+  try {
+    await getMyLocation();
+  } catch (error) {
+    showToast(locationErrorText(error));
+    return;
+  }
+  binSort = "nearest";
+  startLocationWatch();
+  shownBinIds = "";
+  renderBins();
+}
+
+function sortByFullest() {
+  binSort = "fullest";
+  stopLocationWatch();
+  shownBinIds = "";
+  renderBins();
+}
+
+// Find the closest bin that needs emptying and start walking directions.
+async function goToNearestFullBin() {
+  const buttons = document.querySelectorAll('[data-action="next-bin"]');
+  buttons.forEach((button) => (button.disabled = true));
+  showToast("Finding your location…");
+  try {
+    await getMyLocation();
+  } catch (error) {
+    showToast(locationErrorText(error));
+    return;
+  } finally {
+    buttons.forEach((button) => (button.disabled = false));
+  }
+
+  const bin = nearestFullBin();
+  if (!bin) {
+    showToast("No bins need emptying right now.");
+    return;
+  }
+  document.querySelector("#toast").hidden = true;
+  showPage("map");
+  startDirections(bin.id, myLocation);
 }
 
 // ---------------------------------------------------------------------------
@@ -231,6 +355,11 @@ function signIn(workerId) {
   document.querySelectorAll("[data-admin-only]").forEach((el) => (el.hidden = worker.role !== "admin"));
   shownBinIds = "";
   showPage("bins");
+
+  // If this browser already allows location, sort by nearest right away.
+  navigator.permissions?.query({ name: "geolocation" }).then((status) => {
+    if (status.state === "granted") sortByNearest();
+  });
 }
 
 document.querySelector("#loginForm").addEventListener("submit", (event) => {
@@ -253,6 +382,8 @@ document.querySelector("#demoAccounts").addEventListener("click", (event) => {
 });
 
 document.querySelector("#signOut").addEventListener("click", () => {
+  stopLocationWatch();
+  binSort = "fullest";
   data.currentUserId = null;
   saveData();
   showLogin();
@@ -314,18 +445,30 @@ function renderBins() {
   document.querySelectorAll("[data-filter]").forEach((box) => {
     box.classList.toggle("selected", box.dataset.filter === binFilter);
   });
+  document.querySelectorAll("[data-sort]").forEach((button) => {
+    button.classList.toggle("active", button.dataset.sort === binSort);
+  });
+
+  const next = nearestFullBin();
+  document.querySelector("#nextBinHint").textContent = !next
+    ? "No bins need emptying right now"
+    : myLocation
+      ? `Bin ${next.id} · ${formatDistance(metersToBin(next))} away`
+      : "Walking directions to the closest bin that needs emptying";
 
   const visible = allBins
     .filter((bin) => binFilter === "all" || binStatus(bin.id) === binFilter)
     .filter((bin) => `bin ${bin.id} ${bin.location}`.toLowerCase().includes(searchText))
-    .sort((a, b) => fullest(b.id) - fullest(a.id));
+    .sort((a, b) => (binSort === "nearest" ? metersToBin(a) - metersToBin(b) : fullest(b.id) - fullest(a.id)));
 
   document.querySelector("#resultCount").textContent = `${visible.length} bin${visible.length === 1 ? "" : "s"}`;
 
-  // Only rebuild the cards when a bin joins or leaves the list, so cards
-  // don't jump around (or swallow clicks) while numbers update.
+  // Only rebuild the cards when a bin joins or leaves the list (or, when
+  // sorted by distance, changes place), so cards don't jump around or
+  // swallow clicks while numbers update.
   const grid = document.querySelector("#binGrid");
-  const ids = visible.map((bin) => bin.id).sort((a, b) => a - b).join(",");
+  const order = visible.map((bin) => bin.id);
+  const ids = binSort + (binSort === "nearest" ? order : [...order].sort((a, b) => a - b)).join(",");
   if (ids !== shownBinIds) {
     shownBinIds = ids;
     grid.innerHTML = visible.length
@@ -357,6 +500,7 @@ function cardHtml(bin) {
         <span class="badge"></span>
       </div>
       <p class="card-location">${escapeHtml(bin.location)}</p>
+      <p class="card-distance"></p>
       <div class="bars">${bars}</div>
       <p class="card-emptied"></p>
       <div class="card-buttons">
@@ -385,6 +529,7 @@ function updateCard(card, bin) {
   });
 
   card.querySelector(".card-emptied").textContent = emptiedText(bin.id);
+  card.querySelector(".card-distance").textContent = myLocation ? `${formatDistance(metersToBin(bin))} away` : "";
 }
 
 function emptiedText(binId) {
@@ -405,6 +550,13 @@ document.querySelector("#search").addEventListener("input", (event) => {
   renderBins();
 });
 
+document.querySelector(".sort-toggle").addEventListener("click", (event) => {
+  const button = event.target.closest("[data-sort]");
+  if (!button || button.dataset.sort === binSort) return;
+  if (button.dataset.sort === "nearest") sortByNearest();
+  else sortByFullest();
+});
+
 // Buttons on cards, in map popups, and in the directions panel.
 document.addEventListener("click", (event) => {
   const button = event.target.closest("[data-action]");
@@ -413,9 +565,11 @@ document.addEventListener("click", (event) => {
 
   if (button.dataset.action === "empty") {
     map?.closePopup();
-    if (trip?.binId === binId) stopDirections();
+    const wasTripDestination = trip?.binId === binId;
     markEmptied(binId);
+    if (wasTripDestination) showNextBinPrompt(binId);
   }
+  if (button.dataset.action === "next-bin") goToNearestFullBin();
   if (button.dataset.action === "directions") startDirections(binId);
   if (button.dataset.action === "stop-directions") stopDirections();
   if (button.dataset.action === "map") {
@@ -703,9 +857,11 @@ const ARRIVED_METERS = 25;
 // The trip in progress: { binId, layer, userMarker, watchId, steps, distance, duration, ... }
 let trip = null;
 
-function startDirections(binId) {
+// Starts from `here` if given, or a location found in the last minute.
+function startDirections(binId, here = null) {
   const bin = allBins.find((b) => b.id === binId);
   if (!bin || !map) return;
+  const known = here || (myLocation && Date.now() - myLocationAt < 60000 ? myLocation : null);
   stopDirections();
   map.closePopup();
 
@@ -719,6 +875,10 @@ function startDirections(binId) {
   }
 
   renderDirections(bin, { loading: true });
+  if (known) {
+    loadRoute(bin, { latitude: known[0], longitude: known[1] });
+    return;
+  }
   navigator.geolocation.getCurrentPosition(
     (position) => loadRoute(bin, position.coords),
     (error) => {
@@ -795,18 +955,55 @@ function moveUser(bin, here) {
     trip.userMarker.setLatLng(here);
   }
 
+  setMyLocation(here);
   trip.remaining = distanceMeters(here, [bin.latitude, bin.longitude]);
   trip.arrived = trip.remaining <= ARRIVED_METERS;
   renderDirections(bin);
 }
 
 function stopDirections() {
-  if (!trip) return;
-  if (trip.watchId !== null) navigator.geolocation.clearWatch(trip.watchId);
-  trip.layer.remove();
-  trip = null;
+  if (trip) {
+    if (trip.watchId !== null) navigator.geolocation.clearWatch(trip.watchId);
+    trip.layer.remove();
+    trip = null;
+  }
+  nextPromptFor = null;
   document.querySelector(".page-map").classList.remove("routing");
   document.querySelector("#directionsPanel").hidden = true;
+}
+
+// After emptying the bin you walked to, offer the next closest full bin.
+let nextPromptFor = null;
+
+function showNextBinPrompt(emptiedBinId) {
+  stopDirections();
+  nextPromptFor = emptiedBinId;
+  const next = nearestFullBin(emptiedBinId);
+  const panel = document.querySelector("#directionsPanel");
+  document.querySelector(".page-map").classList.add("routing");
+  panel.hidden = false;
+  panel.innerHTML = `
+    <div class="directions-head">
+      <div>
+        <p class="map-label">Done</p>
+        <strong>Bin ${emptiedBinId} emptied</strong>
+      </div>
+      <button type="button" class="button" data-action="stop-directions">Close</button>
+    </div>
+    ${
+      next
+        ? `
+          <div class="next-up">
+            <p class="map-label">Next closest full bin</p>
+            <strong>Bin ${next.id}</strong>
+            <span>${escapeHtml(next.location)}</span>
+            ${myLocation ? `<b>${formatDistance(metersToBin(next))} away</b>` : ""}
+          </div>
+          <button type="button" class="button primary full-width" data-action="directions" data-id="${next.id}">Go to Bin ${next.id}</button>
+        `
+        : '<p class="directions-arrived">That was the last bin that needed emptying. Nice work!</p>'
+    }
+  `;
 }
 
 function renderDirections(bin, { loading = false, error = "" } = {}) {

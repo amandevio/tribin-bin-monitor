@@ -372,6 +372,94 @@ main {
 
 /* ---------- Bins page ---------- */
 
+/* The one big button workers need most. */
+.next-bin {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  width: 100%;
+  margin-bottom: 18px;
+  padding: 18px 22px;
+  color: white;
+  background: var(--green);
+  border: 0;
+  border-radius: var(--radius);
+  box-shadow: 0 8px 20px -10px rgba(4, 57, 39, 0.6);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.next-bin:hover {
+  background: var(--green-light);
+}
+
+.next-bin:disabled {
+  opacity: 0.7;
+  cursor: wait;
+}
+
+.next-bin-arrow {
+  display: grid;
+  flex-shrink: 0;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  color: var(--green);
+  background: var(--gold);
+  border-radius: 12px;
+  font-size: 22px;
+}
+
+.next-bin-text strong {
+  display: block;
+  font-family: "Archivo", sans-serif;
+  font-size: 20px;
+  font-stretch: 112%;
+}
+
+.next-bin-text small {
+  color: rgba(255, 255, 255, 0.75);
+  font-size: 14px;
+}
+
+.sort-toggle {
+  display: flex;
+  flex-shrink: 0;
+  padding: 3px;
+  background: #ece7da;
+  border-radius: 10px;
+}
+
+.sort-toggle button {
+  padding: 7px 14px;
+  color: var(--muted);
+  background: none;
+  border: 0;
+  border-radius: 8px;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.sort-toggle button.active {
+  color: var(--text);
+  background: var(--card);
+  box-shadow: var(--shadow);
+}
+
+.card-distance {
+  margin: -10px 0 12px;
+  color: var(--green-light);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.card-distance:empty {
+  display: none;
+}
+
 .summary {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -1296,6 +1384,9 @@ dialog::backdrop {
 }
 
 .toast {
+  display: flex;
+  align-items: center;
+  gap: 14px;
   position: fixed;
   bottom: 24px;
   left: 50%;
@@ -1307,6 +1398,51 @@ dialog::backdrop {
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
   font-weight: 600;
   transform: translateX(-50%);
+}
+
+.toast-action {
+  padding: 5px 12px;
+  color: var(--green);
+  background: var(--gold);
+  border: 0;
+  border-radius: 8px;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+/* On the map, messages go at the top so they don't cover the panels. */
+body.map-open .toast {
+  top: calc(var(--topbar-height, 62px) + 12px);
+  bottom: auto;
+}
+
+.next-up {
+  padding: 12px 14px;
+  background: #f4f1e8;
+  border-radius: 10px;
+}
+
+.next-up .map-label {
+  margin: 0 0 2px;
+}
+
+.next-up strong {
+  display: block;
+  font-size: 17px;
+}
+
+.next-up span {
+  display: block;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.next-up b {
+  display: block;
+  margin-top: 4px;
+  color: var(--green-light);
+  font-size: 13px;
 }
 
 /* ---------- Phones ---------- */
@@ -1346,8 +1482,25 @@ dialog::backdrop {
     font-size: 28px;
   }
 
+  .toolbar {
+    flex-wrap: wrap;
+  }
+
   .toolbar input {
     max-width: none;
+  }
+
+  .next-bin {
+    padding: 16px;
+  }
+
+  .next-bin-text strong {
+    font-size: 18px;
+  }
+
+  .toast {
+    width: calc(100% - 32px);
+    justify-content: space-between;
   }
 
   /* Filters sit at the bottom and fold away. */

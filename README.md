@@ -8,9 +8,14 @@ connection is needed for the map.
 
 ## Pages
 
+- **Go to nearest full bin**: one big button that finds the closest bin that
+  needs emptying and starts walking directions to it. After you mark it
+  emptied, it offers the next closest one.
 - **Bins**: every bin as a card with three fill bars. Click **Need emptying**,
-  **Almost full**, or **All bins** at the top to filter. Workers press
-  **Mark emptied** after emptying a bin.
+  **Almost full**, or **All bins** at the top to filter, and sort by
+  **Nearest** (shows how far away each bin is) or **Fullest**. Workers press
+  **Mark emptied** after emptying a bin, and can tap **Undo** for a few
+  seconds if they tapped the wrong one.
 - **Map**: every bin as a mini tri-bin marker with one bar per compartment
   (red = needs emptying, yellow = almost full, green = OK). Nearby bins are
   grouped into circles whose ring shows how many are full. Filter by

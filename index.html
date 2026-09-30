@@ -13,7 +13,7 @@
     />
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
-    <link rel="stylesheet" href="style.css?v=3" />
+    <link rel="stylesheet" href="style.css?v=4" />
   </head>
 
   <body>
@@ -64,6 +64,14 @@
       <main>
         <!-- Bins page -->
         <section id="page-bins" class="page">
+          <button type="button" class="next-bin" data-action="next-bin">
+            <span class="next-bin-arrow">&#10148;</span>
+            <span class="next-bin-text">
+              <strong>Go to nearest full bin</strong>
+              <small id="nextBinHint">Walking directions to the closest bin that needs emptying</small>
+            </span>
+          </button>
+
           <div class="summary">
             <button type="button" class="summary-box is-full" data-filter="full">
               <span class="summary-number" id="countFull">0</span>
@@ -81,6 +89,10 @@
 
           <div class="toolbar">
             <input id="search" type="search" placeholder="Search by bin number or location" />
+            <div class="sort-toggle" role="group" aria-label="Sort bins">
+              <button type="button" data-sort="nearest">Nearest</button>
+              <button type="button" data-sort="fullest" class="active">Fullest</button>
+            </div>
             <span id="resultCount" class="muted"></span>
           </div>
 
@@ -97,6 +109,7 @@
               <input id="mapSearch" type="search" placeholder="Search bin number or place" />
               <button type="button" id="filterToggle" class="button filter-toggle">Filters</button>
             </div>
+            <button type="button" class="button primary full-width" data-action="next-bin">Go to nearest full bin</button>
             <div id="mapResults" class="map-results"></div>
 
             <div class="map-filters">
@@ -210,6 +223,6 @@
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
     <script src="bins.js"></script>
-    <script src="app.js?v=3"></script>
+    <script src="app.js?v=4"></script>
   </body>
 </html>
