@@ -531,6 +531,12 @@ function clusterIcon(cluster) {
   });
 }
 
+// Walking directions from wherever you are to the bin. On phones this opens
+// the Google Maps app if it's installed.
+function directionsUrl(bin) {
+  return `https://www.google.com/maps/dir/?api=1&destination=${bin.latitude},${bin.longitude}&travelmode=walking`;
+}
+
 function popupHtml(bin) {
   const rows = COMPARTMENTS.map(({ key, label }) => {
     const value = Math.round(data.levels[bin.id][key]);
@@ -549,7 +555,10 @@ function popupHtml(bin) {
       <p>${escapeHtml(bin.location)}</p>
       ${rows}
       <p class="popup-emptied">${emptiedText(bin.id)}</p>
-      <button type="button" class="button primary full-width" data-action="empty" data-id="${bin.id}">Mark emptied</button>
+      <div class="popup-buttons">
+        <a class="button" href="${directionsUrl(bin)}" target="_blank" rel="noopener">Directions</a>
+        <button type="button" class="button primary" data-action="empty" data-id="${bin.id}">Mark emptied</button>
+      </div>
     </div>
   `;
 }

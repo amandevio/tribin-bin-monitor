@@ -974,7 +974,7 @@ body.map-open main {
 }
 
 .popup {
-  min-width: 220px;
+  min-width: 250px;
   font-family: "Instrument Sans", sans-serif;
 }
 
@@ -1015,8 +1015,23 @@ body.map-open main {
   height: 100%;
 }
 
-.popup .button {
+.popup-buttons {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
   margin-top: 10px;
+}
+
+.popup-buttons .button {
+  padding: 9px 8px;
+  color: var(--text);
+  white-space: nowrap;
+  text-align: center;
+  text-decoration: none;
+}
+
+.popup-buttons .button.primary {
+  color: white;
 }
 
 /* ---------- Settings page ---------- */

@@ -15,7 +15,8 @@ connection is needed for the map.
   (red = needs emptying, yellow = almost full, green = OK). Nearby bins are
   grouped into circles whose ring shows how many are full. Filter by
   compartment or status, search, and switch between Map, Streets, and
-  Satellite. Click a bin for details.
+  Satellite. Click a bin for details, walking directions (opens Google Maps),
+  or to mark it emptied.
 - **Settings** (admins only): add, edit, and remove workers, and change when a
   bin counts as full.
 
