@@ -1,0 +1,212 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Tribin · Sac State Bin Monitor</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@100..125,600..800&family=Instrument+Sans:wght@400..700&display=swap"
+    />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
+    <link rel="stylesheet" href="style.css" />
+  </head>
+
+  <body>
+    <!-- Sign in -->
+    <div id="loginScreen" class="login">
+      <div class="login-card">
+        <div class="logo">
+          <span class="logo-mark"><i></i><i></i><i></i></span>
+          <div>
+            <strong>Tribin</strong>
+            <span>Sac State bin monitor</span>
+          </div>
+        </div>
+
+        <form id="loginForm" novalidate>
+          <label for="loginEmail">Campus email</label>
+          <input id="loginEmail" type="email" placeholder="you@csus.edu" autocomplete="username" />
+          <p id="loginError" class="error" hidden></p>
+          <button type="submit" class="button primary full-width">Sign in</button>
+        </form>
+
+        <p class="divider"><span>or use a demo account</span></p>
+        <div id="demoAccounts" class="demo-accounts"></div>
+      </div>
+    </div>
+
+    <!-- App -->
+    <div id="appScreen" hidden>
+      <header class="topbar">
+        <div class="logo logo-small">
+          <span class="logo-mark"><i></i><i></i><i></i></span>
+          <strong>Tribin</strong>
+        </div>
+
+        <nav class="nav">
+          <button type="button" data-page="bins">Bins</button>
+          <button type="button" data-page="map">Map</button>
+          <button type="button" data-page="settings" data-admin-only>Settings</button>
+        </nav>
+
+        <div class="topbar-right">
+          <span class="live"><i></i><span id="lastUpdate">Live</span></span>
+          <span id="userName" class="user-name"></span>
+          <button type="button" id="signOut" class="button">Sign out</button>
+        </div>
+      </header>
+
+      <main>
+        <!-- Bins page -->
+        <section id="page-bins" class="page">
+          <div class="summary">
+            <button type="button" class="summary-box is-full" data-filter="full">
+              <span class="summary-number" id="countFull">0</span>
+              <span>Need emptying</span>
+            </button>
+            <button type="button" class="summary-box is-almost" data-filter="almost">
+              <span class="summary-number" id="countAlmost">0</span>
+              <span>Almost full</span>
+            </button>
+            <button type="button" class="summary-box is-all" data-filter="all">
+              <span class="summary-number" id="countAll">0</span>
+              <span>All bins</span>
+            </button>
+          </div>
+
+          <div class="toolbar">
+            <input id="search" type="search" placeholder="Search by bin number or location" />
+            <span id="resultCount" class="muted"></span>
+          </div>
+
+          <div id="binGrid" class="bin-grid"></div>
+        </section>
+
+        <!-- Map page -->
+        <section id="page-map" class="page page-map" hidden>
+          <div id="map"></div>
+
+          <!-- Filters, floating over the map -->
+          <aside class="map-panel">
+            <div class="map-panel-top">
+              <input id="mapSearch" type="search" placeholder="Search bin number or place" />
+              <button type="button" id="filterToggle" class="button filter-toggle">Filters</button>
+            </div>
+            <div id="mapResults" class="map-results"></div>
+
+            <div class="map-filters">
+              <p class="map-label">Compartment</p>
+              <div class="segmented">
+                <label><input type="radio" name="mapCompartment" value="any" checked /><span>All</span></label>
+                <label><input type="radio" name="mapCompartment" value="trash" /><span>Trash</span></label>
+                <label><input type="radio" name="mapCompartment" value="recycle" /><span>Recycling</span></label>
+                <label><input type="radio" name="mapCompartment" value="aluminum" /><span>Aluminum</span></label>
+              </div>
+
+              <p class="map-label">Status</p>
+              <div id="mapStatuses" class="status-toggles"></div>
+
+              <label class="switch-row" id="groupRow">
+                <span>Group nearby bins</span>
+                <input type="checkbox" id="groupNearby" class="switch" checked />
+              </label>
+            </div>
+          </aside>
+
+          <div class="map-styles">
+            <button type="button" data-map-style="map" class="active">Map</button>
+            <button type="button" data-map-style="streets">Streets</button>
+            <button type="button" data-map-style="satellite">Satellite</button>
+          </div>
+
+          <div class="map-legend">
+            <div class="legend-pin">
+              <div class="bin-pin pin-almost"><span class="fill-ok" style="height: 35%"></span><span class="fill-almost" style="height: 65%"></span><span class="fill-full" style="height: 90%"></span></div>
+              <span>Bars: Trash · Recycling · Aluminum</span>
+            </div>
+            <div class="legend-colors">
+              <span><i class="fill-ok"></i>OK</span>
+              <span><i class="fill-almost"></i>Almost full</span>
+              <span><i class="fill-full"></i>Needs emptying</span>
+            </div>
+          </div>
+        </section>
+
+        <!-- Settings page (admins only) -->
+        <section id="page-settings" class="page" hidden>
+          <div class="card">
+            <div class="card-head">
+              <div>
+                <h2>Workers</h2>
+                <p class="muted">People who can sign in and empty bins.</p>
+              </div>
+              <button type="button" id="addWorker" class="button primary">+ Add worker</button>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr><th>Name</th><th>Email</th><th>Role</th><th>Emptied today</th><th></th></tr>
+                </thead>
+                <tbody id="workerRows"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="card">
+            <h2>Alert levels</h2>
+            <p class="muted">When a compartment counts as almost full or needing to be emptied.</p>
+            <div class="setting">
+              <label for="fullAt">Needs emptying at</label>
+              <input type="range" id="fullAt" min="60" max="100" step="5" />
+              <output id="fullAtValue"></output>
+            </div>
+            <div class="setting">
+              <label for="almostAt">Almost full at</label>
+              <input type="range" id="almostAt" min="30" max="90" step="5" />
+              <output id="almostAtValue"></output>
+            </div>
+          </div>
+
+          <div class="card">
+            <h2>Demo data</h2>
+            <p class="muted">Put the bins and workers back the way they started.</p>
+            <button type="button" id="resetData" class="button danger">Reset demo data</button>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <!-- Add / edit worker -->
+    <dialog id="workerDialog">
+      <form id="workerForm" novalidate>
+        <h2 id="workerDialogTitle">Add worker</h2>
+        <label for="workerName">Full name</label>
+        <input id="workerName" placeholder="e.g. Alex Rivera" />
+        <label for="workerEmail">Campus email</label>
+        <input id="workerEmail" type="email" placeholder="name@csus.edu" />
+        <label for="workerRole">Role</label>
+        <select id="workerRole">
+          <option value="worker">Worker: sees bins and empties them</option>
+          <option value="admin">Admin: can also manage workers and settings</option>
+        </select>
+        <p id="workerError" class="error" hidden></p>
+        <div class="dialog-buttons">
+          <button type="button" id="cancelWorker" class="button">Cancel</button>
+          <button type="submit" class="button primary">Save</button>
+        </div>
+      </form>
+    </dialog>
+
+    <div id="toast" class="toast" hidden></div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+    <script src="bins.js"></script>
+    <script src="app.js"></script>
+  </body>
+</html>
