@@ -71,6 +71,33 @@
         font-size: 13px;
       }
 
+      .tabs {
+        display: flex;
+        margin-bottom: 10px;
+        padding: 3px;
+        background: #ece7da;
+        border-radius: 10px;
+      }
+
+      .tab {
+        flex: 1;
+        padding: 7px 8px;
+        color: var(--muted);
+        background: none;
+        border: 0;
+        border-radius: 8px;
+        font: inherit;
+        font-size: 13px;
+        font-weight: 700;
+        cursor: pointer;
+      }
+
+      .tab.active {
+        color: var(--text);
+        background: white;
+        box-shadow: 0 1px 3px rgba(22, 36, 28, 0.12);
+      }
+
       .concept {
         display: flex;
         gap: 10px;
@@ -246,6 +273,10 @@
           font-size: 16px;
         }
 
+        .tabs {
+          margin: 8px 0 0;
+        }
+
         .concept-list {
           display: flex;
           gap: 6px;
@@ -336,7 +367,11 @@
 
     <aside class="card picker">
       <h1>Case concepts</h1>
-      <p>Six ways to house the XIAO, sensor and battery. Pick one to explore.</p>
+      <p>Ways to house the XIAO, sensor and battery. Pick one to explore.</p>
+      <div class="tabs">
+        <button type="button" class="tab active" data-tab="basic">Basic (thin)</button>
+        <button type="button" class="tab" data-tab="creative">Creative</button>
+      </div>
       <div class="concept-list" id="conceptList"></div>
       <p class="note">These are concept models built from approximate part sizes. Pick a favorite and I'll make an exact, printable version from your real measurements. <a href="model.html">Back to the bin model</a></p>
     </aside>
@@ -520,8 +555,309 @@
       }
 
       // ---------------------------------------------------------------
+      // Basic designs
+      // ---------------------------------------------------------------
+
+      // An open-top box built from a floor and four walls, so X-ray and
+      // explode can show what's inside.
+      function openBox(parent, w, h, d, wall, material) {
+        const g = new THREE.Group();
+        parent.add(g);
+        mesh(new THREE.BoxGeometry(w, wall, d), material, g, 0, wall / 2, 0);
+        mesh(new THREE.BoxGeometry(w, h, wall), material, g, 0, h / 2, d / 2 - wall / 2);
+        mesh(new THREE.BoxGeometry(w, h, wall), material, g, 0, h / 2, -d / 2 + wall / 2);
+        mesh(new THREE.BoxGeometry(wall, h, d - wall * 2), material, g, w / 2 - wall / 2, h / 2, 0);
+        mesh(new THREE.BoxGeometry(wall, h, d - wall * 2), material, g, -w / 2 + wall / 2, h / 2, 0);
+        return g;
+      }
+
+      // XIAO + battery laid out side by side inside a 100 x 60 box
+      function fillBasicBox(parent, floorY) {
+        const battery = makeBattery();
+        battery.position.set(4, floorY + 11, -13);
+        parent.add(battery);
+        tag("18650 battery", battery, new THREE.Vector3(0, 16, 0));
+        explode(battery, [0, 1, 0], 45);
+
+        const xiao = makeXiao();
+        xiao.position.set(-30, floorY + 4, 15);
+        parent.add(xiao);
+        tag("XIAO ESP32-C3", xiao, new THREE.Vector3(0, 8, 0));
+        explode(xiao, [0, 1, 0], 60);
+
+        const sw = makeMosfet();
+        sw.position.set(-4, floorY + 3, 17);
+        parent.add(sw);
+        explode(sw, [0, 1, 0], 60);
+      }
+
+      function gland(parent, x, y, z, rotation, label) {
+        const g = makeGland();
+        g.rotation.copy(rotation);
+        g.position.set(x, y, z);
+        parent.add(g);
+        if (label) tag(label, g, new THREE.Vector3(0, 0, 0).add(new THREE.Vector3(14, 10, 0)));
+        return g;
+      }
+
+      function buildScrewBox(root) {
+        const W = 100, H = 24, D = 58, T = 2;
+        openBox(root, W, H, D, T, shell(COLORS.cream));
+        fillBasicBox(root, T);
+
+        // Corner posts the screws thread into
+        [[-1, -1], [-1, 1], [1, -1], [1, 1]].forEach(([sx, sz]) => {
+          mesh(new THREE.CylinderGeometry(3.5, 3.5, H - T, 16), mat(0xd9d5c8), root, sx * (W / 2 - 6), T + (H - T) / 2, sz * (D / 2 - 6));
+        });
+
+        const lid = new THREE.Group();
+        lid.position.y = H + 1;
+        root.add(lid);
+        mesh(new RoundedBoxGeometry(W, 2, D, 2, 0.8), shell(COLORS.cream), lid);
+        tag("Flat lid", lid, new THREE.Vector3(0, 8, D / 2 - 6));
+        explode(lid, [0, 1, 0], 70);
+
+        [[-1, -1], [-1, 1], [1, -1], [1, 1]].forEach(([sx, sz], i) => {
+          const screw = new THREE.Group();
+          screw.position.set(sx * (W / 2 - 6), H + 3, sz * (D / 2 - 6));
+          root.add(screw);
+          mesh(new THREE.CylinderGeometry(3, 3, 2, 16), mat(0x9aa0a6, { metalness: 0.6, roughness: 0.3 }), screw);
+          mesh(new THREE.CylinderGeometry(1.4, 1.4, 8, 10), mat(0x9aa0a6, { metalness: 0.6, roughness: 0.3 }), screw, 0, -4, 0);
+          if (i === 3) tag("4 screws (M2.5)", screw, new THREE.Vector3(10, 8, 0));
+          explode(screw, [0, 1, 0], 100);
+        });
+
+        const g = gland(root, W / 2 + 3, H / 2, 10, new THREE.Euler(0, 0, -Math.PI / 2), "Cable gland (sensor wire)");
+        explode(g, [1, 0, 0], 30);
+        const usb = mesh(new THREE.BoxGeometry(3, 4, 9), mat(0x0d0d0d), root, -W / 2, 6, 15);
+        tag("USB-C hole", usb, new THREE.Vector3(-12, 0, 0));
+      }
+
+      function buildSnapBox(root) {
+        const W = 100, H = 24, D = 58, T = 2;
+        openBox(root, W, H, D, T, shell(COLORS.green));
+        fillBasicBox(root, T);
+
+        // Snap bumps on the outside of the long walls
+        [-1, 1].forEach((side) => {
+          [-28, 28].forEach((x) => {
+            mesh(new THREE.BoxGeometry(12, 2.5, 2), mat(0x16523a), root, x, H - 4, side * (D / 2 + 1));
+          });
+        });
+
+        const lid = new THREE.Group();
+        lid.position.y = H + 1;
+        root.add(lid);
+        mesh(new RoundedBoxGeometry(W + 2, 2, D + 2, 2, 0.8), shell(COLORS.green), lid);
+        // Flexible tabs that hook over the bumps
+        [-1, 1].forEach((side) => {
+          [-28, 28].forEach((x) => {
+            mesh(new THREE.BoxGeometry(14, 8, 1.6), mat(COLORS.gold), lid, x, -4, side * (D / 2 + 2.5));
+          });
+        });
+        tag("Snap-on lid", lid, new THREE.Vector3(0, 8, D / 2 - 6));
+        tag("Snap tabs", lid, new THREE.Vector3(28, -6, D / 2 + 10));
+        explode(lid, [0, 1, 0], 70);
+
+        const g = gland(root, W / 2 + 3, H / 2, 10, new THREE.Euler(0, 0, -Math.PI / 2), "Cable gland");
+        explode(g, [1, 0, 0], 30);
+        const usb = mesh(new THREE.BoxGeometry(3, 4, 9), mat(0x0d0d0d), root, -W / 2, 6, 15);
+        tag("USB-C hole", usb, new THREE.Vector3(-12, 0, 0));
+      }
+
+      function buildSlideBox(root) {
+        const W = 100, H = 24, D = 58, T = 2;
+        openBox(root, W, H, D, T, shell(COLORS.gold));
+        fillBasicBox(root, T);
+
+        // Grooves along the top of the long walls
+        [-1, 1].forEach((side) => {
+          mesh(new THREE.BoxGeometry(W, 1.5, 2.5), mat(0x8a7b4c), root, 0, H - 2.5, side * (D / 2 - T - 1.2));
+        });
+
+        const lid = new THREE.Group();
+        lid.position.y = H - 1.5;
+        root.add(lid);
+        mesh(new THREE.BoxGeometry(W - 2, 1.6, D - T * 2 + 2), shell(COLORS.cream), lid);
+        mesh(new THREE.BoxGeometry(4, 1.5, 20), mat(0xb8b2a0), lid, W / 2 - 10, 1.4, 0);
+        tag("Sliding lid (like a pencil box)", lid, new THREE.Vector3(0, 10, 0));
+        tag("Finger grip", lid, new THREE.Vector3(W / 2 - 10, 8, 14));
+        explode(lid, [1, 0, 0], 70);
+
+        const g = gland(root, -W / 2 - 3, H / 2, -10, new THREE.Euler(0, 0, Math.PI / 2), "Cable gland");
+        explode(g, [-1, 0, 0], 30);
+        const usb = mesh(new THREE.BoxGeometry(9, 4, 3), mat(0x0d0d0d), root, -30, 6, D / 2);
+        tag("USB-C hole", usb, new THREE.Vector3(0, -8, 8));
+      }
+
+      function buildTray(root) {
+        const plate = mesh(new RoundedBoxGeometry(90, 3, 60, 2, 1.2), shell(COLORS.cream), root, 0, 1.5, 0);
+        tag("Flat mounting plate", plate, new THREE.Vector3(-30, 6, 30));
+        // Mounting holes
+        [[-1, -1], [-1, 1], [1, -1], [1, 1]].forEach(([sx, sz]) => {
+          mesh(new THREE.CylinderGeometry(2, 2, 3.2, 12), mat(0x333333), root, sx * 39, 1.5, sz * 24);
+        });
+
+        // Standoffs with the XIAO on top
+        const board = new THREE.Group();
+        board.position.set(-18, 0, 0);
+        root.add(board);
+        [[-8, -6], [8, -6], [-8, 6], [8, 6]].forEach(([x, z]) => mesh(new THREE.CylinderGeometry(1.8, 1.8, 6, 10), mat(0xb8b2a0), board, x, 6, z));
+        const xiao = makeXiao();
+        xiao.position.y = 9.6;
+        board.add(xiao);
+        tag("XIAO on standoffs", board, new THREE.Vector3(0, 20, 0));
+        explode(xiao, [0, 1, 0], 30);
+
+        // Sensor held by an L-bracket at the front edge, pointing down
+        const bracket = new THREE.Group();
+        bracket.position.set(28, 0, 0);
+        root.add(bracket);
+        mesh(new THREE.BoxGeometry(4, 40, 44), shell(COLORS.cream), bracket, 18, -17, 0);
+        const sensor = makeSensor();
+        sensor.position.set(-6, -24, 0);
+        sensor.rotation.y = Math.PI / 2;
+        bracket.add(sensor);
+        tag("Sensor pointing down", sensor, new THREE.Vector3(0, -24, 24));
+        // Zip ties
+        [-12, 12].forEach((z) => mesh(new THREE.TorusGeometry(15, 1, 6, 24), mat(0x111111), bracket, 4, -24, z));
+        tag("Zip ties", bracket, new THREE.Vector3(30, -30, 0));
+        explode(sensor, [0, -1, 0], 30);
+
+        const usb = mesh(new THREE.CylinderGeometry(2.2, 2.2, 80, 10), mat(0x222222), root, -70, 10, 0);
+        usb.rotation.z = Math.PI / 2;
+        tag("USB cable", usb, new THREE.Vector3(-20, 8, 0));
+        root.position.y = 50;
+      }
+
+      function buildCombo(root) {
+        const W = 94, H = 30, D = 46, T = 2;
+        // Box sits on the sensor, which pokes through the floor
+        const box = new THREE.Group();
+        box.position.y = 22;
+        root.add(box);
+
+        const floorShape = new THREE.Shape();
+        floorShape.moveTo(-W / 2, -D / 2);
+        floorShape.lineTo(W / 2, -D / 2);
+        floorShape.lineTo(W / 2, D / 2);
+        floorShape.lineTo(-W / 2, D / 2);
+        floorShape.lineTo(-W / 2, -D / 2);
+        const hole = new THREE.Path();
+        hole.absarc(-14, 0, 16, 0, Math.PI * 2, true);
+        floorShape.holes.push(hole);
+        const shellMat = shell(COLORS.dark);
+        const floor = mesh(new THREE.ExtrudeGeometry(floorShape, { depth: T, bevelEnabled: false, curveSegments: 32 }), shellMat, box);
+        floor.rotation.x = -Math.PI / 2;
+        mesh(new THREE.BoxGeometry(W, H, T), shellMat, box, 0, H / 2, D / 2 - T / 2);
+        mesh(new THREE.BoxGeometry(W, H, T), shellMat, box, 0, H / 2, -D / 2 + T / 2);
+        mesh(new THREE.BoxGeometry(T, H, D - T * 2), shellMat, box, W / 2 - T / 2, H / 2, 0);
+        mesh(new THREE.BoxGeometry(T, H, D - T * 2), shellMat, box, -W / 2 + T / 2, H / 2, 0);
+
+        const sensor = makeSensor();
+        sensor.position.set(-14, 15, 0);
+        box.add(sensor);
+        tag("Sensor face pokes out the bottom", sensor, new THREE.Vector3(0, -26, 26));
+        explode(sensor, [0, -1, 0], 45);
+
+        const xiao = makeXiao();
+        xiao.position.set(28, 3, 0);
+        box.add(xiao);
+        tag("XIAO beside the sensor", xiao, new THREE.Vector3(0, 8, 0));
+        explode(xiao, [0, 1, 0], 50);
+
+        const lid = new THREE.Group();
+        lid.position.y = H + 1;
+        box.add(lid);
+        mesh(new RoundedBoxGeometry(W, 2, D, 2, 0.8), shell(COLORS.gold), lid);
+        tag("Push-fit lid", lid, new THREE.Vector3(0, 8, D / 2 - 6));
+        explode(lid, [0, 1, 0], 85);
+
+        const usb = mesh(new THREE.BoxGeometry(3, 4, 9), mat(0x0d0d0d), box, W / 2, 6, 0);
+        tag("USB-C hole", usb, new THREE.Vector3(14, 0, 0));
+        const beam = new THREE.Mesh(new THREE.ConeGeometry(28, 120, 32, 1, true), new THREE.MeshBasicMaterial({ color: 0x5ec7ff, transparent: true, opacity: 0.15, depthWrite: false, side: THREE.DoubleSide }));
+        beam.position.set(-14, -60 + 22 - 2, 0);
+        root.add(beam);
+        root.position.y = 120;
+      }
+
+      // ---------------------------------------------------------------
       // Concepts
       // ---------------------------------------------------------------
+      const BASIC = [
+        {
+          id: "screw",
+          name: "Thin Screw Box",
+          color: "#e9e6dc",
+          tagline: "A thin rectangle box with a flat lid held by 4 small screws. The classic, can't-go-wrong case.",
+          best: "A first real case. Sturdy and simple to print.",
+          pros: ["Only 24 mm tall, about as thin as the battery allows", "Prints flat with no supports", "Screws hold the lid tight and seal well"],
+          cons: ["You need a small screwdriver to open it", "Needs 4 M2.5 screws"],
+          difficulty: "Very easy",
+          time: "3–4 h",
+          filament: "~45 g PETG",
+          swap: "Unscrew lid",
+          build: buildScrewBox,
+        },
+        {
+          id: "snap",
+          name: "Thin Snap Box",
+          color: "#1f6b45",
+          tagline: "The same thin box, but the lid just snaps on and off. No screws or tools.",
+          best: "Quick battery swaps without tools.",
+          pros: ["Opens by hand: squeeze the tabs and lift", "No screws to lose", "Still very thin and easy to print"],
+          cons: ["Snap tabs can wear out after many openings", "Seals a little less tightly than screws"],
+          difficulty: "Easy",
+          time: "3–4 h",
+          filament: "~45 g PETG",
+          swap: "Snap lid off",
+          build: buildSnapBox,
+        },
+        {
+          id: "slide",
+          name: "Thin Slide Box",
+          color: "#c9b77c",
+          tagline: "A thin box whose lid slides out sideways, like a pencil box.",
+          best: "The simplest tool-free lid to design.",
+          pros: ["Lid slides in grooves, so there's nothing to break", "Easy to open with one thumb", "Thin and prints without supports"],
+          cons: ["Not very waterproof on its own (fine indoors or under the bin's top)", "Grooves need a tight print tolerance"],
+          difficulty: "Easy",
+          time: "3–4 h",
+          filament: "~40 g PETG",
+          swap: "Slide lid out",
+          build: buildSlideBox,
+        },
+        {
+          id: "tray",
+          name: "Flat Demo Plate",
+          color: "#d9d5c8",
+          tagline: "A flat plate with the XIAO on little posts and the sensor zip-tied to a bracket. No box at all.",
+          best: "Your class demo, where nothing needs to be hidden or weatherproof.",
+          pros: ["Thinnest and fastest print", "Everything stays visible, which is great for showing the audience", "Runs from a USB cable"],
+          cons: ["No protection from water or dust", "Not for real bins"],
+          difficulty: "Very easy",
+          time: "1–1.5 h",
+          filament: "~20 g PLA",
+          swap: "USB powered",
+          build: buildTray,
+        },
+        {
+          id: "combo",
+          name: "Thin Sensor Box",
+          color: "#26292d",
+          tagline: "One thin box that holds both the sensor and the XIAO. The sensor face pokes out the bottom.",
+          best: "A neat all-in-one unit to hold over a bin for the demo.",
+          pros: ["Sensor and board in one piece, with no loose wires", "Only 30 mm tall", "Just point it down at a bin"],
+          cons: ["USB powered as drawn; no room for a battery"],
+          difficulty: "Easy",
+          time: "2.5–3 h",
+          filament: "~35 g PETG",
+          swap: "USB powered",
+          build: buildCombo,
+        },
+      ];
+      BASIC.forEach((c) => (c.group = "basic"));
+
       const CONCEPTS = [
         {
           id: "brick",
@@ -966,6 +1302,24 @@
       const state = { explode: false, xray: false, labels: true, spin: true };
       let explodeAmount = 0;
 
+      CONCEPTS.forEach((c) => (c.group = "creative"));
+      const ALL = [...BASIC, ...CONCEPTS];
+      let tab = "basic";
+
+      function renderList() {
+        document.querySelectorAll(".tab").forEach((t) => t.classList.toggle("active", t.dataset.tab === tab));
+        document.querySelector("#conceptList").innerHTML = ALL.filter((c) => c.group === tab)
+          .map(
+            (c) => `
+              <button type="button" class="concept" data-id="${c.id}">
+                <i style="background: ${c.color}"></i>
+                <div><strong>${c.name}</strong><span>${c.tagline}</span></div>
+              </button>
+            `
+          )
+          .join("");
+      }
+
       function show(concept) {
         if (current) {
           current.traverse((obj) => {
@@ -1017,17 +1371,17 @@
         });
       }
 
-      document.querySelector("#conceptList").innerHTML = CONCEPTS.map(
-        (c) => `
-          <button type="button" class="concept" data-id="${c.id}">
-            <i style="background: ${c.color}"></i>
-            <div><strong>${c.name}</strong><span>${c.tagline}</span></div>
-          </button>
-        `
-      ).join("");
+      renderList();
       document.querySelector("#conceptList").addEventListener("click", (event) => {
         const button = event.target.closest("[data-id]");
-        if (button) show(CONCEPTS.find((c) => c.id === button.dataset.id));
+        if (button) show(ALL.find((c) => c.id === button.dataset.id));
+      });
+      document.querySelector(".tabs").addEventListener("click", (event) => {
+        const button = event.target.closest("[data-tab]");
+        if (!button || button.dataset.tab === tab) return;
+        tab = button.dataset.tab;
+        renderList();
+        show(ALL.find((c) => c.group === tab));
       });
 
       document.querySelector(".toolbar").addEventListener("click", (event) => {
@@ -1078,7 +1432,7 @@
         labelRenderer.setSize(window.innerWidth, window.innerHeight);
       });
 
-      show(CONCEPTS[0]);
+      show(BASIC[0]);
       animate();
     </script>
   </body>

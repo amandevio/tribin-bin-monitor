@@ -42,8 +42,8 @@ glands and Wi-Fi antenna. Bin dimensions are estimated from photos.
 
 ## Case concepts
 
-`cases.html` shows six 3D-printable case concepts for the controller and
-sensor (Magnetic Brick, Hornet Hive, Cartridge Pod, Smart Rim, Sensor Clip and
+`cases.html` shows 3D-printable case concepts: five thin, basic boxes (screw
+lid, snap lid, slide lid, flat demo plate, sensor box) and six creative designs (Magnetic Brick, Hornet Hive, Cartridge Pod, Smart Rim, Sensor Clip and
 Demo Tower), each with an exploded view, X-ray, pros and cons, and rough print
 estimates.
 
