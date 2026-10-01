@@ -1,0 +1,1028 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Tribin · 3D Sensor Model</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@100..125,600..800&family=Instrument+Sans:wght@400..700&display=swap"
+    />
+    <style>
+      :root {
+        --green: #043927;
+        --gold: #c4b581;
+        --card: rgba(255, 253, 248, 0.95);
+        --text: #16241c;
+        --muted: #6b766f;
+        --line: #e2ddd0;
+        --full: #d0402f;
+        --almost: #d08a0e;
+        --ok: #1f8a5b;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        margin: 0;
+        height: 100%;
+        overflow: hidden;
+        color: var(--text);
+        background: #dfe9ee;
+        font-family: "Instrument Sans", "Segoe UI", sans-serif;
+      }
+
+      #scene {
+        position: fixed;
+        inset: 0;
+      }
+
+      .card {
+        position: fixed;
+        z-index: 5;
+        background: var(--card);
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        box-shadow: 0 10px 24px -12px rgba(22, 36, 28, 0.35);
+        backdrop-filter: blur(8px);
+      }
+
+      .title {
+        top: 14px;
+        left: 14px;
+        width: 300px;
+        padding: 14px 16px;
+      }
+
+      .title h1 {
+        margin: 0;
+        font-family: "Archivo", sans-serif;
+        font-size: 20px;
+        font-stretch: 112%;
+      }
+
+      .title p {
+        margin: 4px 0 0;
+        color: var(--muted);
+        font-size: 13px;
+      }
+
+      .title ol {
+        margin: 10px 0 0;
+        padding-left: 18px;
+        font-size: 13px;
+        line-height: 1.5;
+      }
+
+      .title .note {
+        margin-top: 10px;
+        font-size: 11.5px;
+      }
+
+      .title a {
+        color: var(--green);
+        font-weight: 700;
+      }
+
+      .readings {
+        top: 14px;
+        right: 14px;
+        width: 270px;
+        padding: 14px 16px;
+      }
+
+      .readings h2,
+      .info h2 {
+        margin: 0 0 10px;
+        font-family: "Archivo", sans-serif;
+        font-size: 15px;
+        font-stretch: 112%;
+      }
+
+      .stream {
+        padding: 9px 0;
+        border-top: 1px solid var(--line);
+      }
+
+      .stream-top {
+        display: flex;
+        justify-content: space-between;
+        align-items: baseline;
+        font-size: 14px;
+        font-weight: 700;
+      }
+
+      .stream-top span {
+        font-size: 12px;
+        font-weight: 700;
+      }
+
+      .stream-meta {
+        margin-top: 2px;
+        color: var(--muted);
+        font-size: 12px;
+      }
+
+      .stream input {
+        width: 100%;
+        margin: 6px 0 0;
+        accent-color: var(--green);
+      }
+
+      .toolbar {
+        bottom: 14px;
+        left: 50%;
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 6px;
+        max-width: calc(100% - 28px);
+        padding: 8px;
+        transform: translateX(-50%);
+      }
+
+      .toolbar button {
+        padding: 8px 12px;
+        color: var(--text);
+        background: white;
+        border: 1px solid var(--line);
+        border-radius: 9px;
+        font: inherit;
+        font-size: 13px;
+        font-weight: 600;
+        cursor: pointer;
+      }
+
+      .toolbar button.on {
+        color: white;
+        background: var(--green);
+        border-color: var(--green);
+      }
+
+      .toolbar .sep {
+        width: 1px;
+        background: var(--line);
+      }
+
+      .info {
+        bottom: 80px;
+        left: 14px;
+        width: 320px;
+        padding: 14px 16px;
+      }
+
+      .info p {
+        margin: 0;
+        font-size: 13.5px;
+        line-height: 1.5;
+      }
+
+      .info .close {
+        position: absolute;
+        top: 8px;
+        right: 10px;
+        padding: 2px 8px;
+        color: var(--muted);
+        background: none;
+        border: 0;
+        font-size: 18px;
+        cursor: pointer;
+      }
+
+      .tag {
+        padding: 3px 8px;
+        color: white;
+        background: rgba(4, 57, 39, 0.88);
+        border-radius: 6px;
+        font-family: "Instrument Sans", sans-serif;
+        font-size: 11.5px;
+        font-weight: 700;
+        white-space: nowrap;
+        pointer-events: none;
+      }
+
+      .tag.small {
+        background: rgba(30, 30, 30, 0.85);
+      }
+
+      .hint {
+        position: fixed;
+        bottom: 70px;
+        left: 50%;
+        z-index: 4;
+        color: #2c3a33;
+        font-size: 12px;
+        transform: translateX(-50%);
+        pointer-events: none;
+      }
+
+      .toggle-panels {
+        display: none;
+      }
+
+      [hidden] {
+        display: none !important;
+      }
+
+      @media (max-width: 760px) {
+        .title {
+          right: 14px;
+          width: auto;
+          padding: 10px 12px;
+        }
+
+        .title ol,
+        .title .note {
+          display: none;
+        }
+
+        .title.expanded ol,
+        .title.expanded .note {
+          display: block;
+        }
+
+        .readings {
+          top: auto;
+          right: 10px;
+          bottom: 118px;
+          left: 10px;
+          width: auto;
+          padding: 10px 12px;
+        }
+
+        .readings.collapsed .stream {
+          display: none;
+        }
+
+        .readings h2 {
+          margin: 0;
+          display: flex;
+          justify-content: space-between;
+          cursor: pointer;
+        }
+
+        .readings h2::after {
+          content: "▾";
+        }
+
+        .readings.collapsed h2::after {
+          content: "▸";
+        }
+
+        .stream {
+          padding: 6px 0;
+        }
+
+        .info {
+          right: 10px;
+          bottom: 118px;
+          left: 10px;
+          width: auto;
+          z-index: 6;
+        }
+
+        .toolbar {
+          right: 10px;
+          bottom: 10px;
+          left: 10px;
+          max-width: none;
+          gap: 5px;
+          padding: 6px;
+          transform: none;
+        }
+
+        .toolbar button {
+          padding: 7px 9px;
+          font-size: 12px;
+        }
+
+        .toolbar .sep {
+          display: none;
+        }
+
+        .hint {
+          display: none;
+        }
+      }
+    </style>
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+          "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+        }
+      }
+    </script>
+  </head>
+
+  <body>
+    <div id="scene"></div>
+
+    <div class="card title" id="titleCard">
+      <h1>Tribin sensor system</h1>
+      <p>Outdoor tri-bin with fill sensors · tap to expand</p>
+      <ol>
+        <li>Each compartment has an ultrasonic sensor under the top, pointing down.</li>
+        <li>Every 15 minutes the controller wakes, switches the sensors on, and measures the distance to the trash.</li>
+        <li>It turns that into a fill percentage and sends it over Wi-Fi to the app.</li>
+        <li>Then it switches the sensors off and sleeps to save battery.</li>
+      </ol>
+      <p class="note muted">Bin dimensions are estimated from photos. Tap any part to learn what it does. <a href="./">Open the app</a></p>
+    </div>
+
+    <div class="card readings" id="readings">
+      <h2 id="readingsToggle">Sensor readings</h2>
+      <div id="streams"></div>
+    </div>
+
+    <div class="card info" id="info" hidden>
+      <button type="button" class="close" id="infoClose" aria-label="Close">×</button>
+      <h2 id="infoTitle"></h2>
+      <p id="infoText"></p>
+    </div>
+
+    <p class="hint">Drag to rotate · scroll or pinch to zoom · tap a part for details</p>
+
+    <div class="card toolbar">
+      <button type="button" data-view="overview">Overview</button>
+      <button type="button" data-view="sensor">Sensor</button>
+      <button type="button" data-view="controller">Controller</button>
+      <span class="sep"></span>
+      <button type="button" data-toggle="doors">Open doors</button>
+      <button type="button" data-toggle="xray">See-through</button>
+      <button type="button" data-toggle="beams" class="on">Beams</button>
+      <button type="button" data-toggle="labels" class="on">Labels</button>
+      <button type="button" data-toggle="simulate" class="on">Simulate</button>
+    </div>
+
+    <script type="module">
+      import * as THREE from "three";
+      import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+      import { CSS2DRenderer, CSS2DObject } from "three/addons/renderers/CSS2DRenderer.js";
+
+      // ---------------------------------------------------------------
+      // Estimated sizes (meters), from photos of the outdoor tri-bin
+      // ---------------------------------------------------------------
+      const W = 2.0; // enclosure width
+      const D = 0.75; // depth
+      const H = 1.0; // height of the steel body
+      const CANOPY = 1.45; // height of the rain canopy
+      const BAY = W / 3;
+      const CAN_BOTTOM = 0.06;
+      const CAN_HEIGHT = 0.72;
+      const FILL_MAX = 0.7;
+      const SENSOR_FACE = H - 0.047; // bottom of the sensor, where the sound leaves
+      const BEAM_HALF_ANGLE = (15 * Math.PI) / 180;
+
+      const STREAMS = [
+        { key: "recycle", label: "Recycle", header: "#2f6fdb", fill: [0x4f86c6, 0x8fb3d9, 0xcfd8e3], level: 64 },
+        { key: "landfill", label: "Landfill", header: "#3b3b3b", fill: [0x55524c, 0x77716a, 0x3a3734], level: 86 },
+        { key: "compost", label: "Compost", header: "#2e8b57", fill: [0x6b4e2e, 0x8a6a3c, 0x5d7f2f], level: 31 },
+      ];
+
+      const PARTS = {
+        sensor: ["Ultrasonic sensor (A02YYUW)", "Sends a sound pulse straight down and times the echo off the top of the trash. Shorter distance = fuller compartment. Waterproof (IP67) and reads from 3 cm to 4.5 m. One per compartment."],
+        controller: ["Controller case (3D printed)", "Your custom PETG/ASA case. Holds the XIAO board, the 18650 battery and the power switch. Mounted under the top in the middle bay, out of the rain."],
+        xiao: ["XIAO ESP32-C3 (the brain)", "Tiny Wi-Fi computer. Reads the three sensors, turns distance into a fill %, sends it to the app, then deep-sleeps to save battery. Also charges the battery and reports its level."],
+        battery: ["18650 battery", "Rechargeable lithium cell (≈3000–3500 mAh). Powers everything for months because the board sleeps between readings."],
+        mosfet: ["AO3401 MOSFET (power switch)", "A tiny electronic switch. Turns the sensors on only for the second it takes to measure, so they don't drain the battery the rest of the time."],
+        gland: ["PG7 cable glands", "Screw-on waterproof fittings that seal around each sensor cable where it enters the case."],
+        antenna: ["Wi-Fi antenna", "Comes with the XIAO. Placed near an opening because the steel box blocks Wi-Fi signal."],
+        cable: ["Sensor cable", "Four wires: power, ground and two data wires. Connects each sensor to the XIAO inside the case."],
+        can: ["Inner can", "The plastic can inside each bay. Staff open the front door to swap it, and the sensors above stay put, so there's nothing to unplug."],
+        enclosure: ["Steel enclosure", "Green steel tri-bin with three bays: Recycle, Landfill, Compost. Each bay has a front door for emptying."],
+        canopy: ["Rain canopy", "Keeps rain off the openings and shades the electronics from direct sun."],
+        fill: ["Trash level", "What the sensor measures. Drag the sliders in the Sensor readings panel to change it."],
+      };
+
+      // ---------------------------------------------------------------
+      // Scene setup
+      // ---------------------------------------------------------------
+      const container = document.querySelector("#scene");
+      const renderer = new THREE.WebGLRenderer({ antialias: true });
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      renderer.shadowMap.enabled = true;
+      renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+      renderer.toneMapping = THREE.ACESFilmicToneMapping;
+      renderer.outputColorSpace = THREE.SRGBColorSpace;
+      container.append(renderer.domElement);
+
+      const labelRenderer = new CSS2DRenderer();
+      labelRenderer.setSize(window.innerWidth, window.innerHeight);
+      labelRenderer.domElement.style.position = "fixed";
+      labelRenderer.domElement.style.inset = "0";
+      labelRenderer.domElement.style.pointerEvents = "none";
+      container.append(labelRenderer.domElement);
+
+      const scene = new THREE.Scene();
+      scene.background = new THREE.Color(0xd7e6ee);
+      scene.fog = new THREE.Fog(0xd7e6ee, 8, 22);
+
+      const camera = new THREE.PerspectiveCamera(42, window.innerWidth / window.innerHeight, 0.01, 60);
+      camera.position.set(...(window.innerWidth / window.innerHeight < 0.8 ? [4.4, 2.9, 5.2] : [2.7, 1.8, 3.1]));
+
+      const controls = new OrbitControls(camera, renderer.domElement);
+      controls.target.set(0, 0.6, 0);
+      controls.enableDamping = true;
+      controls.maxPolarAngle = Math.PI * 0.495;
+      controls.minDistance = 0.08;
+      controls.maxDistance = 9;
+
+      scene.add(new THREE.HemisphereLight(0xffffff, 0x8a9a7a, 1.1));
+      const sun = new THREE.DirectionalLight(0xfff3dd, 2.4);
+      sun.position.set(3, 5, 4);
+      sun.castShadow = true;
+      sun.shadow.mapSize.set(2048, 2048);
+      sun.shadow.camera.left = -3;
+      sun.shadow.camera.right = 3;
+      sun.shadow.camera.top = 3;
+      sun.shadow.camera.bottom = -3;
+      sun.shadow.bias = -0.0004;
+      scene.add(sun);
+
+      // Concrete pad and lawn
+      const lawn = new THREE.Mesh(new THREE.CircleGeometry(14, 48), new THREE.MeshStandardMaterial({ color: 0x7fa65a, roughness: 1 }));
+      lawn.rotation.x = -Math.PI / 2;
+      lawn.receiveShadow = true;
+      scene.add(lawn);
+      const pad = new THREE.Mesh(new THREE.BoxGeometry(4.2, 0.04, 2.6), new THREE.MeshStandardMaterial({ color: 0xc9c6bd, roughness: 0.95 }));
+      pad.position.y = -0.019;
+      pad.receiveShadow = true;
+      scene.add(pad);
+
+      // ---------------------------------------------------------------
+      // Helpers
+      // ---------------------------------------------------------------
+      const steelMat = new THREE.MeshStandardMaterial({ color: 0x2a6b48, metalness: 0.45, roughness: 0.45 });
+      const xrayMats = [steelMat];
+
+      function box(w, h, d, mat, x, y, z, parent, part) {
+        const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
+        mesh.position.set(x, y, z);
+        mesh.castShadow = true;
+        mesh.receiveShadow = true;
+        if (part) mesh.userData.part = part;
+        parent.add(mesh);
+        return mesh;
+      }
+
+      function label(text, object, offset, small = false) {
+        const div = document.createElement("div");
+        div.className = small ? "tag small" : "tag";
+        div.textContent = text;
+        const tag = new CSS2DObject(div);
+        tag.position.copy(offset);
+        object.add(tag);
+        tag.userData.small = small;
+        labels.push(tag);
+        return tag;
+      }
+      const labels = [];
+
+      function signTexture(stream) {
+        const canvas = document.createElement("canvas");
+        canvas.width = 340;
+        canvas.height = 460;
+        const ctx = canvas.getContext("2d");
+        ctx.fillStyle = "#fbfaf6";
+        ctx.fillRect(0, 0, 340, 460);
+        ctx.fillStyle = stream.header;
+        ctx.fillRect(0, 0, 340, 84);
+        ctx.fillStyle = "#ffffff";
+        ctx.font = "bold 44px Archivo, Arial";
+        ctx.textAlign = "center";
+        ctx.fillText(stream.label.toUpperCase(), 170, 58);
+        // Simple "what goes here" picture grid
+        const colors = ["#e0a43a", "#d9534f", "#6aa84f", "#3d85c6", "#b4a7d6", "#999999"];
+        for (let i = 0; i < 9; i++) {
+          ctx.fillStyle = colors[(i + stream.label.length) % colors.length];
+          const x = 50 + (i % 3) * 120;
+          const y = 140 + Math.floor(i / 3) * 105;
+          ctx.beginPath();
+          ctx.arc(x, y, 30, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        ctx.fillStyle = stream.header;
+        ctx.fillRect(0, 430, 340, 30);
+        const texture = new THREE.CanvasTexture(canvas);
+        texture.colorSpace = THREE.SRGBColorSpace;
+        return texture;
+      }
+
+      // ---------------------------------------------------------------
+      // Steel enclosure
+      // ---------------------------------------------------------------
+      const enclosure = new THREE.Group();
+      enclosure.userData.part = "enclosure";
+      scene.add(enclosure);
+
+      // Feet, base and floor
+      [[-1, -1], [-1, 1], [1, -1], [1, 1]].forEach(([sx, sz]) => box(0.06, 0.04, 0.06, steelMat, sx * (W / 2 - 0.03), 0.02, sz * (D / 2 - 0.03), enclosure, "enclosure"));
+      box(W, 0.02, D, steelMat, 0, 0.05, 0, enclosure, "enclosure");
+
+      // Posts at the corners and between bays
+      [-W / 2, -W / 2 + BAY, -W / 2 + 2 * BAY, W / 2].forEach((x) => {
+        [D / 2, -D / 2].forEach((z) => box(0.04, H, 0.04, steelMat, x, H / 2, z, enclosure, "enclosure"));
+      });
+
+      // Top plate
+      box(W + 0.06, 0.03, D + 0.06, steelMat, 0, H + 0.015, 0, enclosure, "enclosure");
+
+      // Front band with two round openings per bay
+      const band = new THREE.Shape();
+      band.moveTo(-W / 2, 0);
+      band.lineTo(W / 2, 0);
+      band.lineTo(W / 2, 0.16);
+      band.lineTo(-W / 2, 0.16);
+      band.lineTo(-W / 2, 0);
+      for (let i = 0; i < 3; i++) {
+        const cx = -W / 2 + BAY * (i + 0.5);
+        [-0.13, 0.13].forEach((dx) => {
+          const hole = new THREE.Path();
+          hole.absarc(cx + dx, 0.08, 0.052, 0, Math.PI * 2, true);
+          band.holes.push(hole);
+        });
+      }
+      const bandMesh = new THREE.Mesh(new THREE.ExtrudeGeometry(band, { depth: 0.015, bevelEnabled: false, curveSegments: 28 }), steelMat);
+      bandMesh.position.set(0, H - 0.16, D / 2 - 0.015);
+      bandMesh.castShadow = true;
+      bandMesh.userData.part = "enclosure";
+      enclosure.add(bandMesh);
+      box(W, 0.16, 0.015, steelMat, 0, H - 0.08, -D / 2 + 0.0075, enclosure, "enclosure");
+
+      // Vertical bars on the sides and back
+      const barH = H - 0.22;
+      const barY = 0.06 + barH / 2;
+      [-1, 1].forEach((side) => {
+        for (let i = 0; i < 9; i++) {
+          const z = -D / 2 + 0.06 + (i * (D - 0.12)) / 8;
+          box(0.02, barH, 0.022, steelMat, side * (W / 2), barY, z, enclosure, "enclosure");
+        }
+        box(0.024, 0.03, D, steelMat, side * (W / 2), 0.07, 0, enclosure, "enclosure");
+      });
+      for (let i = 0; i < 26; i++) {
+        const x = -W / 2 + 0.05 + (i * (W - 0.1)) / 25;
+        box(0.022, barH, 0.02, steelMat, x, barY, -D / 2, enclosure, "enclosure");
+      }
+
+      // Front doors (hinged on the left), each with a sorting sign
+      const doors = [];
+      STREAMS.forEach((stream, i) => {
+        const left = -W / 2 + BAY * i + 0.025;
+        const dw = BAY - 0.05;
+        const dh = H - 0.16 - 0.08;
+        const hinge = new THREE.Group();
+        hinge.position.set(left, 0, D / 2 + 0.012);
+        hinge.userData.part = "enclosure";
+        enclosure.add(hinge);
+
+        const y0 = 0.08 + dh / 2;
+        box(0.03, dh, 0.02, steelMat, 0.015, y0, 0, hinge, "enclosure");
+        box(0.03, dh, 0.02, steelMat, dw - 0.015, y0, 0, hinge, "enclosure");
+        box(dw, 0.03, 0.02, steelMat, dw / 2, 0.08 + dh - 0.015, 0, hinge, "enclosure");
+        box(dw, 0.03, 0.02, steelMat, dw / 2, 0.095, 0, hinge, "enclosure");
+        for (let b = 1; b <= 8; b++) box(0.016, dh - 0.06, 0.012, steelMat, (b * dw) / 9, y0, -0.002, hinge, "enclosure");
+
+        const signMat = new THREE.MeshStandardMaterial({ map: signTexture(stream), roughness: 0.7 });
+        xrayMats.push(signMat);
+        const sign = new THREE.Mesh(new THREE.PlaneGeometry(0.34, 0.46), signMat);
+        sign.position.set(dw / 2, y0 + 0.02, 0.013);
+        sign.userData.part = "enclosure";
+        hinge.add(sign);
+        box(0.36, 0.48, 0.006, steelMat, dw / 2, y0 + 0.02, 0.008, hinge, "enclosure");
+        box(0.025, 0.07, 0.02, new THREE.MeshStandardMaterial({ color: 0x222222, metalness: 0.7 }), dw - 0.05, y0, 0.02, hinge, "enclosure");
+
+        doors.push({ hinge, angle: 0, target: 0 });
+      });
+
+      // Rain canopy on four posts
+      const canopy = new THREE.Group();
+      canopy.userData.part = "canopy";
+      scene.add(canopy);
+      [[-1, -1], [-1, 1], [1, -1], [1, 1]].forEach(([sx, sz]) => {
+        const post = new THREE.Mesh(new THREE.CylinderGeometry(0.014, 0.014, CANOPY - H, 12), steelMat);
+        post.position.set(sx * (W / 2 - 0.02), H + (CANOPY - H) / 2, sz * (D / 2 - 0.02));
+        post.castShadow = true;
+        post.userData.part = "canopy";
+        canopy.add(post);
+      });
+      box(W + 0.2, 0.025, D + 0.28, steelMat, 0, CANOPY, 0.03, canopy, "canopy");
+      box(W + 0.2, 0.05, 0.03, steelMat, 0, CANOPY - 0.03, D / 2 + 0.17, canopy, "canopy");
+      box(W + 0.2, 0.05, 0.03, steelMat, 0, CANOPY - 0.03, -D / 2 - 0.11, canopy, "canopy");
+      label("Rain canopy", canopy, new THREE.Vector3(0, CANOPY + 0.08, 0));
+
+      // ---------------------------------------------------------------
+      // Inner cans, trash, sensors and beams
+      // ---------------------------------------------------------------
+      const canMat = new THREE.MeshStandardMaterial({ color: 0x5f666d, roughness: 0.75, side: THREE.DoubleSide });
+      const sensorMat = new THREE.MeshStandardMaterial({ color: 0x2a2d31, roughness: 0.5 });
+      const beamMat = new THREE.MeshBasicMaterial({ color: 0x5ec7ff, transparent: true, opacity: 0.16, depthWrite: false, side: THREE.DoubleSide });
+      const pulseMat = new THREE.MeshBasicMaterial({ color: 0x9be2ff, transparent: true, opacity: 0.7, depthWrite: false, side: THREE.DoubleSide });
+      const echoMat = new THREE.MeshBasicMaterial({ color: 0xffe08a, transparent: true, opacity: 0.6, depthWrite: false, side: THREE.DoubleSide });
+
+      const coneGeometry = new THREE.ConeGeometry(Math.tan(BEAM_HALF_ANGLE), 1, 32, 1, true);
+      coneGeometry.translate(0, -0.5, 0); // apex at the origin, opening downward
+
+      const bays = STREAMS.map((stream, i) => {
+        const x = -W / 2 + BAY * (i + 0.5);
+
+        const can = new THREE.Mesh(new THREE.CylinderGeometry(0.27, 0.25, CAN_HEIGHT, 36, 1, true), canMat);
+        can.position.set(x, CAN_BOTTOM + CAN_HEIGHT / 2, 0);
+        can.castShadow = true;
+        can.receiveShadow = true;
+        can.userData.part = "can";
+        scene.add(can);
+        const bottom = new THREE.Mesh(new THREE.CircleGeometry(0.25, 36), canMat);
+        bottom.rotation.x = -Math.PI / 2;
+        bottom.position.set(x, CAN_BOTTOM + 0.005, 0);
+        scene.add(bottom);
+        const rim = new THREE.Mesh(new THREE.TorusGeometry(0.27, 0.012, 8, 40), canMat);
+        rim.rotation.x = Math.PI / 2;
+        rim.position.set(x, CAN_BOTTOM + CAN_HEIGHT, 0);
+        rim.userData.part = "can";
+        scene.add(rim);
+
+        // Trash: a column with a lumpy top
+        const fillGeometry = new THREE.CylinderGeometry(0.235, 0.24, 1, 30);
+        fillGeometry.translate(0, 0.5, 0);
+        const fill = new THREE.Mesh(fillGeometry, new THREE.MeshStandardMaterial({ color: stream.fill[0], roughness: 0.95 }));
+        fill.position.set(x, CAN_BOTTOM + 0.01, 0);
+        fill.castShadow = true;
+        fill.userData.part = "fill";
+        scene.add(fill);
+        const lumps = new THREE.Group();
+        for (let k = 0; k < 9; k++) {
+          const r = 0.04 + Math.random() * 0.045;
+          const lump = new THREE.Mesh(
+            new THREE.IcosahedronGeometry(r, 0),
+            new THREE.MeshStandardMaterial({ color: stream.fill[k % 3], roughness: 0.9, flatShading: true })
+          );
+          const a = Math.random() * Math.PI * 2;
+          const d = Math.random() * 0.17;
+          lump.position.set(Math.cos(a) * d, r * 0.3, Math.sin(a) * d);
+          lump.rotation.set(Math.random() * 3, Math.random() * 3, 0);
+          lump.userData.part = "fill";
+          lumps.add(lump);
+        }
+        lumps.position.set(x, 0, 0);
+        scene.add(lumps);
+
+        // Sensor under the top plate, pointing down
+        const sensor = new THREE.Group();
+        sensor.position.set(x, H, 0);
+        sensor.userData.part = "sensor";
+        scene.add(sensor);
+        box(0.09, 0.004, 0.055, steelMat, 0, -0.003, 0, sensor, "sensor");
+        box(0.047, 0.03, 0.04, sensorMat, 0, -0.02, 0, sensor, "sensor");
+        const face = new THREE.Mesh(new THREE.CylinderGeometry(0.017, 0.017, 0.012, 24), new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.3 }));
+        face.position.y = -0.041;
+        face.userData.part = "sensor";
+        sensor.add(face);
+        label(`${stream.label} sensor`, sensor, new THREE.Vector3(0, -0.09, 0.12));
+
+        // Sound beam and pulses
+        const beam = new THREE.Mesh(coneGeometry, beamMat);
+        beam.position.set(x, SENSOR_FACE, 0);
+        scene.add(beam);
+        const pulse = new THREE.Mesh(new THREE.RingGeometry(0.85, 1, 40), pulseMat);
+        pulse.rotation.x = -Math.PI / 2;
+        scene.add(pulse);
+        const echo = new THREE.Mesh(new THREE.RingGeometry(0.85, 1, 40), echoMat);
+        echo.rotation.x = -Math.PI / 2;
+        scene.add(echo);
+
+        return { stream, x, fill, lumps, beam, pulse, echo, level: stream.level, phase: i * 0.33, emptyAt: 0 };
+      });
+      label("Inner can", bays[0].fill, new THREE.Vector3(0, 0.15, 0.3));
+
+      // ---------------------------------------------------------------
+      // Controller case with the XIAO, battery, switch and glands
+      // ---------------------------------------------------------------
+      const CASE = { x: 0, y: H - 0.05, z: -0.22, w: 0.13, h: 0.055, d: 0.085 };
+      const caseMat = new THREE.MeshStandardMaterial({ color: 0xe9efe6, roughness: 0.6, transparent: true, opacity: 0.55, depthWrite: false });
+      const controller = new THREE.Group();
+      controller.position.set(CASE.x, CASE.y, CASE.z);
+      controller.userData.part = "controller";
+      scene.add(controller);
+      const shell = box(CASE.w, CASE.h, CASE.d, caseMat, 0, 0, 0, controller, "controller");
+      shell.castShadow = false;
+      box(CASE.w + 0.004, 0.004, CASE.d + 0.004, new THREE.MeshStandardMaterial({ color: 0xd9e3d4, transparent: true, opacity: 0.6 }), 0, CASE.h / 2 + 0.002, 0, controller, "controller");
+
+      // XIAO board with USB-C port
+      const xiao = new THREE.Group();
+      xiao.position.set(-0.042, -0.012, -0.014);
+      xiao.userData.part = "xiao";
+      controller.add(xiao);
+      box(0.0215, 0.0016, 0.0175, new THREE.MeshStandardMaterial({ color: 0x23338a, roughness: 0.5 }), 0, 0, 0, xiao, "xiao");
+      box(0.012, 0.0025, 0.012, new THREE.MeshStandardMaterial({ color: 0xb8bcc2, metalness: 0.9, roughness: 0.3 }), 0.002, 0.0018, 0, xiao, "xiao");
+      box(0.009, 0.0032, 0.007, new THREE.MeshStandardMaterial({ color: 0xcfd3d8, metalness: 0.9 }), -0.011, 0.002, 0, xiao, "xiao");
+
+      // 18650 battery in a holder
+      const battery = new THREE.Group();
+      battery.position.set(0.02, -0.014, -0.012);
+      battery.userData.part = "battery";
+      controller.add(battery);
+      box(0.077, 0.012, 0.021, new THREE.MeshStandardMaterial({ color: 0x1b1b1b }), 0, -0.004, 0, battery, "battery");
+      const cell = new THREE.Mesh(new THREE.CylinderGeometry(0.0092, 0.0092, 0.065, 20), new THREE.MeshStandardMaterial({ color: 0x2d6fd6, roughness: 0.4 }));
+      cell.rotation.z = Math.PI / 2;
+      cell.position.y = 0.004;
+      cell.userData.part = "battery";
+      battery.add(cell);
+
+      // Power switch and its little carrier board
+      const mosfet = new THREE.Group();
+      mosfet.position.set(-0.042, -0.012, 0.02);
+      mosfet.userData.part = "mosfet";
+      controller.add(mosfet);
+      box(0.014, 0.0016, 0.01, new THREE.MeshStandardMaterial({ color: 0x1f6b3a }), 0, 0, 0, mosfet, "mosfet");
+      box(0.003, 0.0012, 0.0016, new THREE.MeshStandardMaterial({ color: 0x111111 }), 0, 0.0014, 0, mosfet, "mosfet");
+
+      // Cable glands where the sensor cables come in
+      const glandMat = new THREE.MeshStandardMaterial({ color: 0x151515, roughness: 0.6 });
+      const glandSpots = [
+        { pos: new THREE.Vector3(-CASE.w / 2 - 0.006, 0, 0), rot: new THREE.Euler(0, 0, Math.PI / 2) },
+        { pos: new THREE.Vector3(0, 0, CASE.d / 2 + 0.006), rot: new THREE.Euler(Math.PI / 2, 0, 0) },
+        { pos: new THREE.Vector3(CASE.w / 2 + 0.006, 0, 0), rot: new THREE.Euler(0, 0, Math.PI / 2) },
+      ];
+      glandSpots.forEach(({ pos, rot }) => {
+        const gland = new THREE.Mesh(new THREE.CylinderGeometry(0.0075, 0.0085, 0.014, 6), glandMat);
+        gland.position.copy(pos);
+        gland.rotation.copy(rot);
+        gland.userData.part = "gland";
+        controller.add(gland);
+      });
+
+      // Sensor cables from each sensor to its gland
+      const cableMat = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.6 });
+      bays.forEach((bay, i) => {
+        const end = controller.localToWorld(glandSpots[i].pos.clone());
+        const start = new THREE.Vector3(bay.x, H - 0.03, 0);
+        const mid = new THREE.Vector3((start.x + end.x) / 2, H - 0.012, (start.z + end.z) / 2 - 0.02);
+        const curve = new THREE.CatmullRomCurve3([start, new THREE.Vector3(start.x, H - 0.012, -0.03), mid, end]);
+        const cable = new THREE.Mesh(new THREE.TubeGeometry(curve, 48, 0.0035, 8, false), cableMat);
+        cable.userData.part = "cable";
+        scene.add(cable);
+      });
+
+      // Wi-Fi antenna stuck inside the front band, near an opening
+      const antennaPos = new THREE.Vector3(0.0, H - 0.04, D / 2 - 0.03);
+      const antenna = new THREE.Mesh(new THREE.BoxGeometry(0.045, 0.015, 0.0012), new THREE.MeshStandardMaterial({ color: 0x0d0d0d, roughness: 0.4 }));
+      antenna.position.copy(antennaPos);
+      antenna.userData.part = "antenna";
+      scene.add(antenna);
+      const antennaWire = new THREE.CatmullRomCurve3([
+        controller.localToWorld(new THREE.Vector3(-0.042, -0.01, CASE.d / 2)),
+        new THREE.Vector3(-0.02, H - 0.03, 0.05),
+        antennaPos.clone().add(new THREE.Vector3(-0.02, 0, -0.005)),
+      ]);
+      scene.add(new THREE.Mesh(new THREE.TubeGeometry(antennaWire, 30, 0.0012, 6, false), cableMat));
+
+      // Wi-Fi waves heading out through the front
+      const waves = [0, 1, 2].map((k) => {
+        const wave = new THREE.Mesh(
+          new THREE.RingGeometry(0.9, 1, 48, 1, Math.PI * 0.15, Math.PI * 0.7),
+          new THREE.MeshBasicMaterial({ color: 0x3aa0ff, transparent: true, opacity: 0.5, depthWrite: false, side: THREE.DoubleSide })
+        );
+        wave.position.copy(antennaPos).add(new THREE.Vector3(0, 0.02, 0.02));
+        wave.userData.offset = k / 3;
+        scene.add(wave);
+        return wave;
+      });
+
+      label("Controller case", controller, new THREE.Vector3(0, 0.07, 0));
+      label("Wi-Fi antenna", antenna, new THREE.Vector3(0, 0.05, 0.03));
+      label("XIAO ESP32-C3", xiao, new THREE.Vector3(0, 0.022, 0), true);
+      label("18650 battery", battery, new THREE.Vector3(0.012, 0.024, 0), true);
+      label("MOSFET switch", mosfet, new THREE.Vector3(0, 0.012, -0.01), true);
+      label("Cable gland", controller, new THREE.Vector3(-CASE.w / 2 - 0.02, -0.02, 0), true);
+
+      // ---------------------------------------------------------------
+      // Readings panel
+      // ---------------------------------------------------------------
+      const STATUS = (p) => (p >= 80 ? ["Needs emptying", "var(--full)"] : p >= 50 ? ["Almost full", "var(--almost)"] : ["OK", "var(--ok)"]);
+      const streamsEl = document.querySelector("#streams");
+      streamsEl.innerHTML = bays
+        .map(
+          (bay, i) => `
+            <div class="stream">
+              <div class="stream-top">${bay.stream.label}<span data-status="${i}"></span></div>
+              <div class="stream-meta" data-meta="${i}"></div>
+              <input type="range" min="0" max="100" value="${bay.level}" data-slider="${i}" aria-label="${bay.stream.label} fill level">
+            </div>
+          `
+        )
+        .join("");
+
+      streamsEl.addEventListener("input", (event) => {
+        const i = event.target.dataset.slider;
+        if (i === undefined) return;
+        bays[i].level = Number(event.target.value);
+        setToggle("simulate", false);
+      });
+
+      function updateReadings() {
+        bays.forEach((bay, i) => {
+          const fillTop = CAN_BOTTOM + 0.01 + (bay.level / 100) * FILL_MAX;
+          const distanceCm = Math.round((SENSOR_FACE - fillTop) * 100);
+          const [text, color] = STATUS(bay.level);
+          const status = streamsEl.querySelector(`[data-status="${i}"]`);
+          status.textContent = `${Math.round(bay.level)}% · ${text}`;
+          status.style.color = color;
+          streamsEl.querySelector(`[data-meta="${i}"]`).textContent = `Sensor reads ${distanceCm} cm to the trash`;
+          const slider = streamsEl.querySelector(`[data-slider="${i}"]`);
+          if (document.activeElement !== slider) slider.value = Math.round(bay.level);
+        });
+      }
+
+      // ---------------------------------------------------------------
+      // Toolbar: views and toggles
+      // ---------------------------------------------------------------
+      const state = { doors: false, xray: false, beams: true, labels: true, simulate: true };
+      const portrait = () => window.innerWidth / window.innerHeight < 0.8;
+      const VIEWS = {
+        get overview() {
+          return { pos: portrait() ? [4.4, 2.9, 5.2] : [2.7, 1.8, 3.1], target: [0, 0.6, 0], xray: false };
+        },
+        sensor: { pos: [-0.36, 0.72, 0.62], target: [-W / 3, 0.86, 0], xray: true },
+        controller: { pos: [0.1, 1.13, -0.06], target: [-0.01, H - 0.06, -0.22], xray: true },
+      };
+      let tween = null;
+
+      function setToggle(name, value) {
+        state[name] = value;
+        document.querySelector(`[data-toggle="${name}"]`).classList.toggle("on", value);
+        if (name === "doors") {
+          doors.forEach((door) => (door.target = value ? -1.75 : 0));
+          document.querySelector('[data-toggle="doors"]').textContent = value ? "Close doors" : "Open doors";
+        }
+        if (name === "xray") {
+          xrayMats.forEach((mat) => {
+            mat.transparent = value;
+            mat.opacity = value ? 0.14 : 1;
+            mat.depthWrite = !value;
+            mat.needsUpdate = true;
+          });
+          caseMat.opacity = value ? 0.3 : 0.55;
+        }
+        if (name === "beams") bays.forEach((bay) => [bay.beam, bay.pulse, bay.echo].forEach((m) => (m.visible = value)));
+      }
+
+      document.querySelector(".toolbar").addEventListener("click", (event) => {
+        const button = event.target.closest("button");
+        if (!button) return;
+        if (button.dataset.toggle) setToggle(button.dataset.toggle, !state[button.dataset.toggle]);
+        if (button.dataset.view) {
+          const view = VIEWS[button.dataset.view];
+          tween = { pos: new THREE.Vector3(...view.pos), target: new THREE.Vector3(...view.target) };
+          setToggle("xray", view.xray);
+        }
+      });
+      controls.addEventListener("start", () => (tween = null));
+
+      // Mobile: collapse panels
+      document.querySelector("#titleCard").addEventListener("click", (event) => {
+        if (event.target.tagName !== "A") event.currentTarget.classList.toggle("expanded");
+      });
+      document.querySelector("#readingsToggle").addEventListener("click", () => {
+        if (window.innerWidth <= 760) document.querySelector("#readings").classList.toggle("collapsed");
+      });
+      if (window.innerWidth <= 760) document.querySelector("#readings").classList.add("collapsed");
+
+      // ---------------------------------------------------------------
+      // Tap a part for an explanation
+      // ---------------------------------------------------------------
+      const raycaster = new THREE.Raycaster();
+      const pointer = new THREE.Vector2();
+      let downAt = null;
+      renderer.domElement.addEventListener("pointerdown", (event) => (downAt = [event.clientX, event.clientY]));
+      renderer.domElement.addEventListener("pointerup", (event) => {
+        if (!downAt || Math.hypot(event.clientX - downAt[0], event.clientY - downAt[1]) > 6) return;
+        pointer.set((event.clientX / window.innerWidth) * 2 - 1, -(event.clientY / window.innerHeight) * 2 + 1);
+        raycaster.setFromCamera(pointer, camera);
+        const hits = raycaster.intersectObjects(scene.children, true).filter((hit) => hit.object.visible);
+        for (const hit of hits) {
+          let object = hit.object;
+          while (object && !object.userData.part) object = object.parent;
+          if (!object) continue;
+          // When see-through is on, look past the steel to what's inside.
+          if (state.xray && object.userData.part === "enclosure") continue;
+          showInfo(object.userData.part);
+          return;
+        }
+      });
+
+      function showInfo(part) {
+        const [title, text] = PARTS[part];
+        document.querySelector("#infoTitle").textContent = title;
+        document.querySelector("#infoText").textContent = text;
+        document.querySelector("#info").hidden = false;
+      }
+      document.querySelector("#infoClose").addEventListener("click", () => (document.querySelector("#info").hidden = true));
+
+      // ---------------------------------------------------------------
+      // Animation loop
+      // ---------------------------------------------------------------
+      const clock = new THREE.Clock();
+      let readingsTimer = 0;
+      const controllerWorld = new THREE.Vector3(CASE.x, CASE.y, CASE.z);
+
+      function animate() {
+        const dt = Math.min(clock.getDelta(), 0.05);
+        const t = clock.elapsedTime;
+
+        // Simulated filling, and an occasional "emptied" when a bin is full
+        if (state.simulate) {
+          bays.forEach((bay, i) => {
+            if (bay.level >= 100) {
+              bay.emptyAt ||= t + 2.5;
+              if (t >= bay.emptyAt) {
+                bay.level = 3;
+                bay.emptyAt = 0;
+              }
+            } else {
+              bay.level = Math.min(100, bay.level + dt * [2.2, 3.1, 1.6][i]);
+            }
+          });
+        }
+
+        bays.forEach((bay) => {
+          const fillH = Math.max(0.002, (bay.level / 100) * FILL_MAX);
+          bay.fill.scale.y = fillH;
+          const top = CAN_BOTTOM + 0.01 + fillH;
+          bay.lumps.position.y = top;
+          bay.lumps.visible = bay.level > 2;
+
+          // Beam from the sensor down to the trash
+          const length = SENSOR_FACE - top;
+          const spread = Math.min(length, 0.23 / Math.tan(BEAM_HALF_ANGLE));
+          bay.beam.scale.set(spread, length, spread);
+
+          // A pulse travels down, then the echo comes back up
+          const cycle = (t * 0.9 + bay.phase) % 1;
+          const down = Math.min(cycle * 2, 1);
+          const up = Math.max(cycle * 2 - 1, 0);
+          const downY = SENSOR_FACE - length * down;
+          const radiusAt = (dist) => Math.min(dist, spread) * Math.tan(BEAM_HALF_ANGLE) + 0.004;
+          bay.pulse.position.set(bay.x, downY, 0);
+          bay.pulse.scale.setScalar(radiusAt(length * down));
+          bay.pulse.visible = state.beams && cycle < 0.5;
+          const upY = top + length * up;
+          bay.echo.position.set(bay.x, upY, 0);
+          bay.echo.scale.setScalar(radiusAt(SENSOR_FACE - upY));
+          bay.echo.visible = state.beams && cycle >= 0.5;
+        });
+
+        // Wi-Fi waves
+        waves.forEach((wave) => {
+          const p = (t * 0.6 + wave.userData.offset) % 1;
+          wave.scale.setScalar(0.03 + p * 0.5);
+          wave.material.opacity = 0.55 * (1 - p);
+        });
+
+        // Doors swing smoothly
+        doors.forEach((door) => {
+          door.angle += (door.target - door.angle) * Math.min(1, dt * 6);
+          door.hinge.rotation.y = door.angle;
+        });
+
+        // Camera fly-to
+        if (tween) {
+          camera.position.lerp(tween.pos, Math.min(1, dt * 3.5));
+          controls.target.lerp(tween.target, Math.min(1, dt * 3.5));
+          if (camera.position.distanceTo(tween.pos) < 0.005) tween = null;
+        }
+        controls.update();
+
+        // Small part labels only appear up close
+        const near = camera.position.distanceTo(controllerWorld) < 0.7;
+        labels.forEach((tag) => (tag.visible = state.labels && (tag.userData.small ? near : true)));
+
+        readingsTimer += dt;
+        if (readingsTimer > 0.1) {
+          readingsTimer = 0;
+          updateReadings();
+        }
+
+        renderer.render(scene, camera);
+        labelRenderer.render(scene, camera);
+        requestAnimationFrame(animate);
+      }
+
+      window.addEventListener("resize", () => {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        labelRenderer.setSize(window.innerWidth, window.innerHeight);
+      });
+
+      updateReadings();
+      animate();
+    </script>
+  </body>
+</html>

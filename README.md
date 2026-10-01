@@ -33,6 +33,13 @@ connection is needed for the map.
 - **Settings** (admins only): add, edit, and remove workers, and change when a
   bin counts as full.
 
+## 3D model
+
+`model.html` is an interactive 3D model of an outdoor tri-bin with the sensor
+system installed: the three ultrasonic sensors and their sound beams, and the
+controller case with the XIAO ESP32-C3, 18650 battery, power switch, cable
+glands and Wi-Fi antenna. Bin dimensions are estimated from photos.
+
 ## Demo accounts
 
 - Jordan Reyes: Admin
