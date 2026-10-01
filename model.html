@@ -379,8 +379,9 @@
       const FILL_MAX = 0.7;
       const SENSOR_FACE = H - 0.047; // bottom of the sensor, where the sound leaves
       const BEAM_HALF_ANGLE = (15 * Math.PI) / 180;
-      const HOLE_Z = 0.12; // openings toward the front of the top
-      const SENSOR_Z = -0.1; // sensors toward the back, clear of the openings
+      const HOLE_Z = 0.08; // one big opening per bay, a little toward the front
+      const HOLE_R = 0.18;
+      const SENSOR_Z = -0.19; // sensors at the back edge, clear of the opening
 
       const STREAMS = [
         { key: "recycle", label: "Recycle", header: "#2f6fdb", fill: [0x4f86c6, 0x8fb3d9, 0xcfd8e3], level: 64 },
@@ -395,10 +396,10 @@
         battery: ["18650 battery", "Rechargeable lithium cell (≈3000–3500 mAh). Powers everything for months because the board sleeps between readings."],
         mosfet: ["AO3401 MOSFET (power switch)", "A tiny electronic switch. Turns the sensors on only for the second it takes to measure, so they don't drain the battery the rest of the time."],
         gland: ["PG7 cable glands", "Screw-on waterproof fittings that seal around each sensor cable where it enters the case."],
-        antenna: ["Wi-Fi antenna", "Comes with the XIAO. Stuck under the top between two openings, because the steel box blocks Wi-Fi and the signal escapes through the holes."],
+        antenna: ["Wi-Fi antenna", "Comes with the XIAO. Stuck under the top right beside the opening, because the steel box blocks Wi-Fi and the signal escapes through the hole."],
         cable: ["Sensor cable", "Four wires: power, ground and two data wires. Connects each sensor to the XIAO inside the case."],
         can: ["Inner can", "The plastic can inside each bay. Staff open the front door to swap it, and the sensors above stay put, so there's nothing to unplug."],
-        enclosure: ["Steel enclosure", "Green steel tri-bin with three bays: Recycle, Landfill, Compost. People drop items through the round openings on top; staff empty each bay through its front door."],
+        enclosure: ["Steel enclosure", "Green steel tri-bin with three bays: Recycle, Landfill, Compost. People drop items through the big round opening on top of each bay; staff empty each bay through its front door."],
         canopy: ["Rain canopy", "Keeps rain off the openings and shades the electronics from direct sun."],
         fill: ["Trash level", "What the sensor measures. Drag the sliders in the Sensor readings panel to change it."],
       };
@@ -545,12 +546,10 @@
       top.lineTo(-tw, -td);
       for (let i = 0; i < 3; i++) {
         const cx = -W / 2 + BAY * (i + 0.5);
-        [-0.13, 0.13].forEach((dx) => {
-          const hole = new THREE.Path();
-          // The shape's y becomes -z once the plate is laid flat.
-          hole.absarc(cx + dx, -HOLE_Z, 0.075, 0, Math.PI * 2, true);
-          top.holes.push(hole);
-        });
+        const hole = new THREE.Path();
+        // The shape's y becomes -z once the plate is laid flat.
+        hole.absarc(cx, -HOLE_Z, HOLE_R, 0, Math.PI * 2, true);
+        top.holes.push(hole);
       }
       const topMesh = new THREE.Mesh(new THREE.ExtrudeGeometry(top, { depth: 0.03, bevelEnabled: false, curveSegments: 32 }), steelMat);
       topMesh.rotation.x = -Math.PI / 2;
@@ -560,18 +559,16 @@
       topMesh.userData.part = "enclosure";
       enclosure.add(topMesh);
 
-      // A light rim around each opening so they're easy to spot
+      // A light rim around each opening so it's easy to spot
       const rimMat = new THREE.MeshStandardMaterial({ color: 0xb9c2bd, metalness: 0.6, roughness: 0.35 });
       xrayMats.push(rimMat);
       for (let i = 0; i < 3; i++) {
         const cx = -W / 2 + BAY * (i + 0.5);
-        [-0.13, 0.13].forEach((dx) => {
-          const ring = new THREE.Mesh(new THREE.TorusGeometry(0.078, 0.008, 10, 40), rimMat);
-          ring.rotation.x = Math.PI / 2;
-          ring.position.set(cx + dx, H + 0.032, HOLE_Z);
-          ring.userData.part = "enclosure";
-          enclosure.add(ring);
-        });
+        const ring = new THREE.Mesh(new THREE.TorusGeometry(HOLE_R + 0.004, 0.01, 10, 56), rimMat);
+        ring.rotation.x = Math.PI / 2;
+        ring.position.set(cx, H + 0.032, HOLE_Z);
+        ring.userData.part = "enclosure";
+        enclosure.add(ring);
       }
 
       // Plain bands across the front and back, just under the top
@@ -793,15 +790,15 @@
       });
 
       // Wi-Fi antenna stuck inside the front band, near an opening
-      const antennaPos = new THREE.Vector3(0.0, H - 0.002, HOLE_Z);
+      const antennaPos = new THREE.Vector3(HOLE_R + 0.045, H - 0.002, HOLE_Z);
       const antenna = new THREE.Mesh(new THREE.BoxGeometry(0.045, 0.0012, 0.015), new THREE.MeshStandardMaterial({ color: 0x0d0d0d, roughness: 0.4 }));
       antenna.position.copy(antennaPos);
       antenna.userData.part = "antenna";
       scene.add(antenna);
       const antennaWire = new THREE.CatmullRomCurve3([
         controller.localToWorld(new THREE.Vector3(-0.042, -0.01, CASE.d / 2)),
-        new THREE.Vector3(0.08, H - 0.012, -0.05),
-        antennaPos.clone().add(new THREE.Vector3(0.02, -0.003, 0)),
+        new THREE.Vector3(HOLE_R + 0.05, H - 0.012, -0.08),
+        antennaPos.clone().add(new THREE.Vector3(0, -0.003, -0.01)),
       ]);
       scene.add(new THREE.Mesh(new THREE.TubeGeometry(antennaWire, 30, 0.0012, 6, false), cableMat));
 
@@ -984,7 +981,7 @@
 
           // Beam from the sensor down to the trash
           const length = SENSOR_FACE - top;
-          const spread = Math.min(length, 0.23 / Math.tan(BEAM_HALF_ANGLE));
+          const spread = Math.min(length, (0.24 - Math.abs(SENSOR_Z)) / Math.tan(BEAM_HALF_ANGLE));
           bay.beam.scale.set(spread, length, spread);
 
           // A pulse travels down, then the echo comes back up
