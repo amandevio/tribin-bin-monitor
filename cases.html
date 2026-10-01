@@ -1,0 +1,1085 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Tribin · Case Concepts</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@100..125,600..800&family=Instrument+Sans:wght@400..700&display=swap"
+    />
+    <style>
+      :root {
+        --green: #043927;
+        --gold: #c4b581;
+        --card: rgba(255, 253, 248, 0.96);
+        --text: #16241c;
+        --muted: #6b766f;
+        --line: #e2ddd0;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        margin: 0;
+        height: 100%;
+        overflow: hidden;
+        color: var(--text);
+        background: #e9ece6;
+        font-family: "Instrument Sans", "Segoe UI", sans-serif;
+      }
+
+      #scene {
+        position: fixed;
+        inset: 0;
+      }
+
+      .card {
+        position: fixed;
+        z-index: 5;
+        background: var(--card);
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        box-shadow: 0 10px 24px -12px rgba(22, 36, 28, 0.35);
+        backdrop-filter: blur(8px);
+      }
+
+      .picker {
+        top: 14px;
+        bottom: 14px;
+        left: 14px;
+        width: 270px;
+        padding: 14px;
+        overflow-y: auto;
+      }
+
+      .picker h1 {
+        margin: 0;
+        font-family: "Archivo", sans-serif;
+        font-size: 20px;
+        font-stretch: 112%;
+      }
+
+      .picker > p {
+        margin: 4px 0 12px;
+        color: var(--muted);
+        font-size: 13px;
+      }
+
+      .concept {
+        display: flex;
+        gap: 10px;
+        width: 100%;
+        margin-bottom: 8px;
+        padding: 10px;
+        text-align: left;
+        background: white;
+        border: 1.5px solid var(--line);
+        border-radius: 11px;
+        font: inherit;
+        cursor: pointer;
+      }
+
+      .concept:hover {
+        border-color: #cfc7b3;
+      }
+
+      .concept.active {
+        border-color: var(--green);
+        background: #f3f7f2;
+      }
+
+      .concept i {
+        flex-shrink: 0;
+        width: 30px;
+        height: 30px;
+        border-radius: 8px;
+      }
+
+      .concept strong {
+        display: block;
+        font-size: 14px;
+      }
+
+      .concept span {
+        color: var(--muted);
+        font-size: 12px;
+        line-height: 1.35;
+      }
+
+      .picker .note {
+        margin-top: 10px;
+        color: var(--muted);
+        font-size: 12px;
+      }
+
+      .picker a {
+        color: var(--green);
+        font-weight: 700;
+      }
+
+      .info {
+        top: 14px;
+        right: 14px;
+        width: 300px;
+        max-height: calc(100% - 100px);
+        padding: 16px;
+        overflow-y: auto;
+      }
+
+      .info h2 {
+        margin: 0;
+        font-family: "Archivo", sans-serif;
+        font-size: 20px;
+        font-stretch: 112%;
+      }
+
+      .info .tagline {
+        margin: 4px 0 12px;
+        color: var(--muted);
+        font-size: 13.5px;
+      }
+
+      .info h3 {
+        margin: 12px 0 4px;
+        color: var(--muted);
+        font-size: 11.5px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      .info ul {
+        margin: 0;
+        padding-left: 18px;
+        font-size: 13.5px;
+        line-height: 1.5;
+      }
+
+      .info .pros li::marker {
+        color: #1f8a5b;
+      }
+
+      .info .cons li::marker {
+        color: #d0402f;
+      }
+
+      .stats {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+        margin-top: 12px;
+      }
+
+      .stats div {
+        padding: 8px 10px;
+        background: #f4f1e8;
+        border-radius: 9px;
+        font-size: 12px;
+      }
+
+      .stats b {
+        display: block;
+        font-size: 14px;
+      }
+
+      .toolbar {
+        bottom: 14px;
+        left: 50%;
+        display: flex;
+        gap: 6px;
+        padding: 8px;
+        transform: translateX(-50%);
+      }
+
+      .toolbar button {
+        padding: 8px 14px;
+        color: var(--text);
+        background: white;
+        border: 1px solid var(--line);
+        border-radius: 9px;
+        font: inherit;
+        font-size: 13px;
+        font-weight: 600;
+        cursor: pointer;
+      }
+
+      .toolbar button.on {
+        color: white;
+        background: var(--green);
+        border-color: var(--green);
+      }
+
+      .tag {
+        padding: 3px 8px;
+        color: white;
+        background: rgba(4, 57, 39, 0.88);
+        border-radius: 6px;
+        font-family: "Instrument Sans", sans-serif;
+        font-size: 11.5px;
+        font-weight: 700;
+        white-space: nowrap;
+        pointer-events: none;
+      }
+
+      @media (max-width: 860px) {
+        .picker {
+          top: 10px;
+          right: 10px;
+          bottom: auto;
+          left: 10px;
+          width: auto;
+          padding: 10px;
+          overflow: visible;
+        }
+
+        .picker > p,
+        .picker .note {
+          display: none;
+        }
+
+        .picker h1 {
+          font-size: 16px;
+        }
+
+        .concept-list {
+          display: flex;
+          gap: 6px;
+          margin-top: 8px;
+          overflow-x: auto;
+          scrollbar-width: none;
+        }
+
+        .concept {
+          flex: 0 0 auto;
+          width: auto;
+          margin: 0;
+          padding: 7px 10px;
+          align-items: center;
+        }
+
+        .concept i {
+          width: 16px;
+          height: 16px;
+          border-radius: 5px;
+        }
+
+        .concept span {
+          display: none;
+        }
+
+        .concept strong {
+          font-size: 13px;
+          white-space: nowrap;
+        }
+
+        .info {
+          top: auto;
+          right: 10px;
+          bottom: 66px;
+          left: 10px;
+          width: auto;
+          max-height: 34%;
+          padding: 12px;
+        }
+
+        .info.collapsed .details {
+          display: none;
+        }
+
+        .info h2 {
+          display: flex;
+          justify-content: space-between;
+          font-size: 16px;
+          cursor: pointer;
+        }
+
+        .info h2::after {
+          content: "▾";
+        }
+
+        .info.collapsed h2::after {
+          content: "▸";
+        }
+
+        .toolbar {
+          right: 10px;
+          bottom: 10px;
+          left: 10px;
+          justify-content: center;
+          transform: none;
+        }
+
+        .toolbar button {
+          flex: 1;
+          padding: 8px 6px;
+          font-size: 12px;
+        }
+      }
+    </style>
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+          "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+        }
+      }
+    </script>
+  </head>
+
+  <body>
+    <div id="scene"></div>
+
+    <aside class="card picker">
+      <h1>Case concepts</h1>
+      <p>Six ways to house the XIAO, sensor and battery. Pick one to explore.</p>
+      <div class="concept-list" id="conceptList"></div>
+      <p class="note">These are concept models built from approximate part sizes. Pick a favorite and I'll make an exact, printable version from your real measurements. <a href="model.html">Back to the bin model</a></p>
+    </aside>
+
+    <aside class="card info" id="info">
+      <h2 id="infoName"></h2>
+      <div class="details">
+        <p class="tagline" id="infoTagline"></p>
+        <h3>Best for</h3>
+        <ul><li id="infoBest"></li></ul>
+        <h3>Why it's good</h3>
+        <ul class="pros" id="infoPros"></ul>
+        <h3>Trade-offs</h3>
+        <ul class="cons" id="infoCons"></ul>
+        <div class="stats">
+          <div>Print difficulty<b id="infoDifficulty"></b></div>
+          <div>Print time (rough)<b id="infoTime"></b></div>
+          <div>Filament (rough)<b id="infoFilament"></b></div>
+          <div>Battery swap<b id="infoSwap"></b></div>
+        </div>
+      </div>
+    </aside>
+
+    <div class="card toolbar">
+      <button type="button" data-toggle="explode">Explode</button>
+      <button type="button" data-toggle="xray">X-ray</button>
+      <button type="button" data-toggle="labels" class="on">Labels</button>
+      <button type="button" data-toggle="spin" class="on">Spin</button>
+    </div>
+
+    <script type="module">
+      import * as THREE from "three";
+      import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+      import { CSS2DRenderer, CSS2DObject } from "three/addons/renderers/CSS2DRenderer.js";
+      import { RoundedBoxGeometry } from "three/addons/geometries/RoundedBoxGeometry.js";
+
+      // Everything is in millimeters.
+
+      // ---------------------------------------------------------------
+      // Scene
+      // ---------------------------------------------------------------
+      const renderer = new THREE.WebGLRenderer({ antialias: true });
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      renderer.shadowMap.enabled = true;
+      renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+      renderer.toneMapping = THREE.ACESFilmicToneMapping;
+      renderer.outputColorSpace = THREE.SRGBColorSpace;
+      document.querySelector("#scene").append(renderer.domElement);
+
+      const labelRenderer = new CSS2DRenderer();
+      labelRenderer.setSize(window.innerWidth, window.innerHeight);
+      Object.assign(labelRenderer.domElement.style, { position: "fixed", inset: "0", pointerEvents: "none" });
+      document.querySelector("#scene").append(labelRenderer.domElement);
+
+      const scene = new THREE.Scene();
+      scene.background = new THREE.Color(0xe9ece6);
+
+      const camera = new THREE.PerspectiveCamera(38, window.innerWidth / window.innerHeight, 1, 5000);
+      const controls = new OrbitControls(camera, renderer.domElement);
+      controls.enableDamping = true;
+      controls.autoRotate = true;
+      controls.autoRotateSpeed = 1.2;
+
+      scene.add(new THREE.HemisphereLight(0xffffff, 0x9aa294, 1.2));
+      const key = new THREE.DirectionalLight(0xfff4e0, 2.2);
+      key.position.set(300, 500, 400);
+      key.castShadow = true;
+      key.shadow.mapSize.set(2048, 2048);
+      Object.assign(key.shadow.camera, { left: -400, right: 400, top: 400, bottom: -400, near: 10, far: 2000 });
+      scene.add(key);
+      const rim = new THREE.DirectionalLight(0xcfe3ff, 0.8);
+      rim.position.set(-400, 200, -300);
+      scene.add(rim);
+
+      const floor = new THREE.Mesh(new THREE.CircleGeometry(1200, 64), new THREE.ShadowMaterial({ opacity: 0.18 }));
+      floor.rotation.x = -Math.PI / 2;
+      floor.receiveShadow = true;
+      scene.add(floor);
+
+      // ---------------------------------------------------------------
+      // Materials and helpers
+      // ---------------------------------------------------------------
+      const mat = (color, extra = {}) => new THREE.MeshStandardMaterial({ color, roughness: 0.55, ...extra });
+      const COLORS = { green: 0x1f6b45, gold: 0xc9b77c, cream: 0xe9e6dc, dark: 0x1c1e20, steel: 0x2a6b48 };
+
+      let shellMats = [];
+      let labels = [];
+      let explodeParts = [];
+
+      function mesh(geometry, material, parent, x = 0, y = 0, z = 0) {
+        const m = new THREE.Mesh(geometry, material);
+        m.position.set(x, y, z);
+        m.castShadow = true;
+        m.receiveShadow = true;
+        parent.add(m);
+        return m;
+      }
+
+      function shell(color) {
+        const m = mat(color, { roughness: 0.6 });
+        shellMats.push(m);
+        return m;
+      }
+
+      function tag(text, object, offset) {
+        const div = document.createElement("div");
+        div.className = "tag";
+        div.textContent = text;
+        const label = new CSS2DObject(div);
+        label.position.copy(offset);
+        object.add(label);
+        labels.push(label);
+      }
+
+      function explode(object, dir, dist) {
+        explodeParts.push({ object, base: object.position.clone(), dir: new THREE.Vector3(...dir).normalize(), dist });
+      }
+
+      // ---------------------------------------------------------------
+      // The real parts (approximate sizes)
+      // ---------------------------------------------------------------
+      function makeXiao() {
+        const g = new THREE.Group();
+        mesh(new THREE.BoxGeometry(21, 1.2, 17.5), mat(0x23338a), g);
+        mesh(new THREE.BoxGeometry(12, 2.5, 12), mat(0xb8bcc2, { metalness: 0.9, roughness: 0.3 }), g, 1.5, 1.8, 0);
+        mesh(new THREE.BoxGeometry(7.5, 3.2, 9), mat(0xd0d4d8, { metalness: 0.9 }), g, -8.6, 2, 0);
+        return g;
+      }
+
+      function makeBattery(holder = true) {
+        const g = new THREE.Group();
+        const cell = mesh(new THREE.CylinderGeometry(9.3, 9.3, 65, 32), mat(0x2d6fd6, { roughness: 0.4 }), g);
+        cell.rotation.z = Math.PI / 2;
+        const band = mesh(new THREE.CylinderGeometry(9.45, 9.45, 6, 32), mat(0x1b1b1b), g, 28, 0, 0);
+        band.rotation.z = Math.PI / 2;
+        if (holder) {
+          const h = mat(0x111111);
+          mesh(new THREE.BoxGeometry(77, 2, 21), h, g, 0, -10, 0);
+          mesh(new THREE.BoxGeometry(2, 16, 21), h, g, -37.5, -3, 0);
+          mesh(new THREE.BoxGeometry(2, 16, 21), h, g, 37.5, -3, 0);
+        }
+        return g;
+      }
+
+      function makeMosfet() {
+        const g = new THREE.Group();
+        mesh(new THREE.BoxGeometry(14, 1.6, 10), mat(0x1f6b3a), g);
+        mesh(new THREE.BoxGeometry(3, 1.2, 1.6), mat(0x111111), g, 0, 1.4, 0);
+        return g;
+      }
+
+      function makeAntenna() {
+        const g = new THREE.Group();
+        mesh(new THREE.BoxGeometry(40, 0.4, 12), mat(0x0d0d0d, { roughness: 0.3 }), g);
+        return g;
+      }
+
+      // Cable gland pointing along +y
+      function makeGland() {
+        const g = new THREE.Group();
+        const d = mat(0x161616, { roughness: 0.5 });
+        mesh(new THREE.CylinderGeometry(6.25, 6.25, 8, 24), d, g, 0, -4, 0);
+        mesh(new THREE.CylinderGeometry(9.5, 9.5, 6, 6), d, g, 0, 3, 0);
+        mesh(new THREE.CylinderGeometry(7.5, 6.5, 8, 24), d, g, 0, 10, 0);
+        return g;
+      }
+
+      // A02YYUW-style sensor, sound face pointing down (-y)
+      function makeSensor() {
+        const g = new THREE.Group();
+        mesh(new RoundedBoxGeometry(46, 26, 38, 3, 3), mat(0x26292d), g);
+        mesh(new THREE.CylinderGeometry(15, 15, 4, 40), mat(0x0e0e0e, { roughness: 0.25 }), g, 0, -15, 0);
+        const cable = mesh(new THREE.CylinderGeometry(2.6, 2.6, 40, 12), mat(0x111111), g, 0, 4, -38);
+        cable.rotation.x = Math.PI / 2;
+        return g;
+      }
+
+      function makeMagnet() {
+        return mesh(new THREE.CylinderGeometry(6, 6, 3, 28), mat(0xc9ccd1, { metalness: 0.35, roughness: 0.3 }), new THREE.Group());
+      }
+
+      // ---------------------------------------------------------------
+      // Concepts
+      // ---------------------------------------------------------------
+      const CONCEPTS = [
+        {
+          id: "brick",
+          name: "Magnetic Brick",
+          color: "#1f6b45",
+          tagline: "A slim box that sticks to the steel bin with magnets. No drilling, no screws.",
+          best: "The real outdoor bins: the enclosure is steel, so it just snaps on.",
+          pros: [
+            "Mounts in seconds: four magnets on the back hold it to any steel surface",
+            "Battery cover is also held by magnets, so swaps are tool-free",
+            "Simple flat-sided print with no supports",
+          ],
+          cons: ["Someone could pull it off if it's reachable from outside", "Needs four small neodymium magnets (cheap)"],
+          difficulty: "Easy",
+          time: "6–8 h",
+          filament: "~90 g PETG",
+          swap: "Pull cover off",
+          build: buildBrick,
+        },
+        {
+          id: "hive",
+          name: "Hornet Hive",
+          color: "#c9b77c",
+          tagline: "A hexagon case in Hornet gold and black, with a honeycomb face and a battery cartridge.",
+          best: "Showing off Sac State spirit at your presentation or on campus bins.",
+          pros: [
+            "Unforgettable look that ties the project to the Hornets",
+            "Battery lives in a hex cartridge that slides out the front",
+            "Hex shape is strong and prints well on its side",
+          ],
+          cons: ["Bigger than the other designs", "Hex walls take a little more filament"],
+          difficulty: "Medium",
+          time: "8–10 h",
+          filament: "~120 g PETG",
+          swap: "Pull cartridge",
+          build: buildHive,
+        },
+        {
+          id: "pod",
+          name: "Cartridge Pod",
+          color: "#e9e6dc",
+          tagline: "A capsule that slides onto a rail, with a twist-off cap and a battery cartridge.",
+          best: "Workers swapping batteries often: twist, pull, push, twist.",
+          pros: [
+            "Twist-off cap seals with an O-ring, great against rain",
+            "Slides off its rail so the whole pod can be swapped or repaired",
+            "Round shape sheds water and looks sleek",
+          ],
+          cons: ["Round parts need careful printing (print upright)", "Rail adds one extra part to mount"],
+          difficulty: "Medium",
+          time: "7–9 h",
+          filament: "~100 g PETG",
+          swap: "Twist cap",
+          build: buildPod,
+        },
+        {
+          id: "ring",
+          name: "Smart Rim",
+          color: "#2a6b48",
+          tagline: "A trim ring around the bin opening, with the sensor, board and battery built into one unit.",
+          best: "One self-contained unit per compartment. No long cables at all.",
+          pros: [
+            "Everything in one piece: sensor, board, battery and solar strip",
+            "Sensor sits right at the opening, so no cables run across the bin",
+            "Solar strip on top can keep the battery topped up",
+          ],
+          cons: ["One board per compartment, so it costs more for three bins", "Largest print of the set"],
+          difficulty: "Hard",
+          time: "10–12 h",
+          filament: "~160 g PETG",
+          swap: "Slide out back",
+          build: buildRing,
+        },
+        {
+          id: "clip",
+          name: "Sensor Clip",
+          color: "#26292d",
+          tagline: "A small bracket that holds the sensor and lets you tilt it to aim straight down.",
+          best: "Mounting the sensor itself, alongside any of the controller cases.",
+          pros: ["Tiny, quick print", "Tilt hinge lets you aim the beam away from walls", "Magnet or screw mounting"],
+          cons: ["Only holds the sensor, not the electronics"],
+          difficulty: "Easy",
+          time: "1.5–2 h",
+          filament: "~25 g PETG",
+          swap: "n/a",
+          build: buildClip,
+        },
+        {
+          id: "demo",
+          name: "Demo Tower",
+          color: "#5e97f2",
+          tagline: "A stand that holds the sensor over a clear test bin, with the XIAO in the base.",
+          best: "Your class demo: fill the clear bin and watch the app update live.",
+          pros: [
+            "Built for your one-sensor demo, no bin needed",
+            "Clear test bin lets the audience see the fill level match the app",
+            "Runs from a USB cable or power bank",
+          ],
+          cons: ["Not for outdoor use", "Post and arm are separate parts to glue or screw"],
+          difficulty: "Easy",
+          time: "5–6 h",
+          filament: "~110 g PLA/PETG",
+          swap: "USB powered",
+          build: buildDemo,
+        },
+      ];
+
+      function buildBrick(root) {
+        const W = 125, H = 55, D = 32;
+        const body = mesh(new RoundedBoxGeometry(W, H, D, 4, 5), shell(COLORS.green), root, 0, H / 2 + 6, 0);
+        const inside = new THREE.Group();
+        inside.position.copy(body.position);
+        root.add(inside);
+
+        // Divider between electronics (left) and battery (right)
+        mesh(new THREE.BoxGeometry(2, H - 8, D - 8), mat(0x16523a), inside, -27, 0, 0);
+
+        const xiao = makeXiao();
+        xiao.rotation.x = Math.PI / 2;
+        xiao.position.set(-45, 8, -6);
+        inside.add(xiao);
+        tag("XIAO ESP32-C3", xiao, new THREE.Vector3(0, 0, -16));
+        explode(xiao, [0, 0, 1], 40);
+
+        const sw = makeMosfet();
+        sw.rotation.x = Math.PI / 2;
+        sw.position.set(-45, -12, -6);
+        inside.add(sw);
+        tag("Power switch", sw, new THREE.Vector3(0, 0, -10));
+        explode(sw, [0, 0, 1], 40);
+
+        const battery = makeBattery();
+        battery.position.set(22, 0, -2);
+        inside.add(battery);
+        tag("18650 battery", battery, new THREE.Vector3(0, 16, 0));
+        explode(battery, [0, 0, 1], 70);
+
+        // Magnetic battery cover with a finger notch
+        const cover = new THREE.Group();
+        cover.position.set(19, 0, D / 2 + 1.5);
+        inside.add(cover);
+        mesh(new RoundedBoxGeometry(86, 46, 3, 2, 1.2), mat(COLORS.gold), cover);
+        mesh(new THREE.BoxGeometry(18, 5, 1.5), mat(0x8a7b4c), cover, 30, -16, 1.6);
+        tag("Magnetic battery cover", cover, new THREE.Vector3(0, 30, 0));
+        explode(cover, [0, 0, 1], 110);
+
+        // Status light and USB-C port
+        mesh(new THREE.CylinderGeometry(2.5, 2.5, 3, 16), mat(0x7cfc9a, { emissive: 0x2fbf60, emissiveIntensity: 0.8 }), inside, -45, 20, D / 2).rotation.x = Math.PI / 2;
+        const usb = mesh(new RoundedBoxGeometry(3, 4.5, 10, 2, 1.2), mat(0x0d0d0d), inside, -W / 2, 0, 0);
+        tag("USB-C charge port", usb, new THREE.Vector3(-14, 0, 0));
+
+        // Glands on the bottom
+        [-50, -38, -26].forEach((x, i) => {
+          const gland = makeGland();
+          gland.rotation.x = Math.PI;
+          gland.position.set(x, -H / 2 - 3, 0);
+          inside.add(gland);
+          if (i === 1) tag("Cable glands", gland, new THREE.Vector3(0, 22, 0));
+          explode(gland, [0, -1, 0], 30);
+        });
+
+        // Magnets on the back
+        [[-48, 18], [48, 18], [-48, -18], [48, -18]].forEach(([x, y], i) => {
+          const magnet = makeMagnet();
+          magnet.rotation.x = Math.PI / 2;
+          magnet.position.set(x, y, -D / 2 - 1.5);
+          inside.add(magnet);
+          if (i === 0) tag("Mounting magnets", magnet, new THREE.Vector3(-10, 12, 0));
+          explode(magnet, [0, 0, -1], 45);
+        });
+
+        const antenna = makeAntenna();
+        antenna.rotation.x = Math.PI / 2;
+        antenna.position.set(0, H / 2 - 6, -D / 2 + 4);
+        inside.add(antenna);
+      }
+
+      function buildHive(root) {
+        const R = 46, L = 90;
+        const hive = new THREE.Group();
+        hive.position.y = R * 0.866 + 6;
+        root.add(hive);
+
+        const body = mesh(new THREE.CylinderGeometry(R, R, L, 6), shell(COLORS.gold), hive);
+        body.rotation.x = Math.PI / 2;
+        body.rotation.y = Math.PI / 6;
+        // Hornet stripes
+        [-24, 6].forEach((z) => {
+          const stripe = mesh(new THREE.CylinderGeometry(R + 0.6, R + 0.6, 9, 6), mat(COLORS.dark), hive, 0, 0, z);
+          stripe.rotation.x = Math.PI / 2;
+          stripe.rotation.y = Math.PI / 6;
+        });
+
+        // Honeycomb dimples around the cartridge port
+        const front = L / 2 + 0.3;
+        for (let a = 0; a < 6; a++) {
+          const ang = (a / 6) * Math.PI * 2 + Math.PI / 6;
+          const cell = mesh(new THREE.CylinderGeometry(6, 6, 1.5, 6), mat(0x7a6a3a), hive, Math.cos(ang) * 31, Math.sin(ang) * 31, front);
+          cell.rotation.x = Math.PI / 2;
+        }
+
+        // Battery cartridge slides out the front
+        const cartridge = new THREE.Group();
+        cartridge.position.set(0, 0, 4);
+        hive.add(cartridge);
+        const sleeve = mesh(new THREE.CylinderGeometry(17, 17, 84, 6), mat(COLORS.dark, { transparent: true, opacity: 0.45, depthWrite: false }), cartridge);
+        sleeve.rotation.x = Math.PI / 2;
+        sleeve.rotation.y = Math.PI / 6;
+        const tab = mesh(new RoundedBoxGeometry(16, 8, 10, 2, 2), mat(COLORS.gold), cartridge, 0, 0, 46);
+        tag("Pull tab", tab, new THREE.Vector3(0, 10, 4));
+        const battery = makeBattery(false);
+        battery.rotation.y = Math.PI / 2;
+        cartridge.add(battery);
+        tag("Battery cartridge", cartridge, new THREE.Vector3(0, -24, 30));
+        explode(cartridge, [0, 0, 1], 70);
+
+        const xiao = makeXiao();
+        xiao.position.set(0, 27, -14);
+        hive.add(xiao);
+        tag("XIAO ESP32-C3", xiao, new THREE.Vector3(0, 8, 0));
+        explode(xiao, [0, 1, 0], 40);
+        const sw = makeMosfet();
+        sw.position.set(0, 27, 12);
+        hive.add(sw);
+        explode(sw, [0, 1, 0], 40);
+        const antenna = makeAntenna();
+        antenna.position.set(0, 33, -2);
+        antenna.rotation.y = Math.PI / 2;
+        hive.add(antenna);
+
+        // Back plate with keyhole slots, and glands in a triangle
+        const plate = mesh(new RoundedBoxGeometry(70, 70, 4, 2, 2), mat(COLORS.dark), hive, 0, 0, -L / 2 - 2);
+        tag("Keyhole wall plate", plate, new THREE.Vector3(0, 44, 0));
+        explode(plate, [0, 0, -1], 40);
+        [[0, 18], [-16, -10], [16, -10]].forEach(([x, y], i) => {
+          const gland = makeGland();
+          gland.rotation.x = -Math.PI / 2;
+          gland.position.set(x, y, -L / 2 - 8);
+          hive.add(gland);
+          if (i === 0) tag("Cable glands", gland, new THREE.Vector3(0, 0, -16));
+          explode(gland, [0, 0, -1], 70);
+        });
+      }
+
+      function buildPod(root) {
+        const R = 24, L = 110;
+        const pod = new THREE.Group();
+        pod.position.y = R + 30;
+        root.add(pod);
+
+        const body = mesh(new THREE.CapsuleGeometry(R, L, 12, 36), shell(COLORS.cream), pod);
+        body.rotation.z = Math.PI / 2;
+
+        // Twist cap with grip ribs and an LED ring
+        const cap = new THREE.Group();
+        cap.position.x = L / 2 + 10;
+        pod.add(cap);
+        const capBody = mesh(new THREE.CylinderGeometry(R + 0.8, R + 0.8, 16, 40), mat(COLORS.green), cap);
+        capBody.rotation.z = Math.PI / 2;
+        for (let i = 0; i < 12; i++) {
+          const a = (i / 12) * Math.PI * 2;
+          mesh(new THREE.BoxGeometry(14, 3, 3), mat(0x16523a), cap, 0, Math.cos(a) * (R + 1.5), Math.sin(a) * (R + 1.5));
+        }
+        tag("Twist-off cap", cap, new THREE.Vector3(10, 34, 0));
+        explode(cap, [1, 0, 0], 50);
+        const ledRing = mesh(new THREE.TorusGeometry(R + 0.4, 1.3, 10, 48), mat(0xc9b77c, { emissive: 0x6f6030, emissiveIntensity: 0.5 }), pod, L / 2 - 2, 0, 0);
+        ledRing.rotation.y = Math.PI / 2;
+
+        // Battery cartridge
+        const battery = makeBattery(false);
+        battery.position.x = 20;
+        pod.add(battery);
+        tag("Battery cartridge", battery, new THREE.Vector3(0, 18, 0));
+        explode(battery, [1, 0, 0], 105);
+
+        const xiao = makeXiao();
+        xiao.position.set(-38, 4, 0);
+        pod.add(xiao);
+        tag("XIAO ESP32-C3", xiao, new THREE.Vector3(0, 10, 0));
+        const sw = makeMosfet();
+        sw.position.set(-38, -8, 0);
+        pod.add(sw);
+
+        // Rail clip on top and the rail itself
+        mesh(new RoundedBoxGeometry(60, 8, 16, 2, 2), mat(COLORS.green), pod, -10, R + 3, 0);
+        const rail = mesh(new RoundedBoxGeometry(170, 6, 22, 2, 2), mat(0x8c8f93, { metalness: 0.6, roughness: 0.35 }), pod, -10, R + 10, 0);
+        tag("Mounting rail", rail, new THREE.Vector3(-70, 8, 0));
+        explode(rail, [0, 1, 0], 35);
+
+        // Glands on the back dome
+        [-12, 0, 12].forEach((z, i) => {
+          const gland = makeGland();
+          gland.rotation.z = Math.PI / 2;
+          gland.position.set(-L / 2 - R + 4, -4, z);
+          pod.add(gland);
+          if (i === 1) tag("Cable glands", gland, new THREE.Vector3(0, -18, 0));
+          explode(gland, [-1, 0, 0], 35);
+        });
+      }
+
+      function buildRing(root) {
+        const OUT = 130, IN = 100;
+        // The steel bin top it sits on, for context
+        const topShape = new THREE.Shape();
+        topShape.moveTo(-200, -200);
+        topShape.lineTo(200, -200);
+        topShape.lineTo(200, 200);
+        topShape.lineTo(-200, 200);
+        topShape.lineTo(-200, -200);
+        const hole = new THREE.Path();
+        hole.absarc(0, 0, IN, 0, Math.PI * 2, true);
+        topShape.holes.push(hole);
+        const binTop = mesh(new THREE.ExtrudeGeometry(topShape, { depth: 4, bevelEnabled: false, curveSegments: 64 }), mat(COLORS.steel, { metalness: 0.4, transparent: true, opacity: 0.35 }), root, 0, 120, 0);
+        binTop.rotation.x = -Math.PI / 2;
+        tag("Bin top (steel)", binTop, new THREE.Vector3(-170, -170, 6));
+
+        // The ring itself
+        const ringShape = new THREE.Shape();
+        ringShape.absarc(0, 0, OUT, 0, Math.PI * 2, false);
+        const ringHole = new THREE.Path();
+        ringHole.absarc(0, 0, IN, 0, Math.PI * 2, true);
+        ringShape.holes.push(ringHole);
+        const ring = new THREE.Group();
+        ring.position.y = 124;
+        root.add(ring);
+        const ringMesh = mesh(new THREE.ExtrudeGeometry(ringShape, { depth: 14, bevelEnabled: true, bevelSize: 2, bevelThickness: 2, curveSegments: 72 }), shell(COLORS.green), ring);
+        ringMesh.rotation.x = -Math.PI / 2;
+        tag("Trim ring", ring, new THREE.Vector3(0, 26, OUT - 10));
+        explode(ring, [0, 1, 0], 60);
+
+        // Solar tiles along the back of the ring
+        for (let i = -2; i <= 2; i++) {
+          const a = Math.PI / 2 + i * 0.16;
+          const tile = mesh(new THREE.BoxGeometry(18, 1.5, 18), mat(0x1d2f5c, { metalness: 0.5, roughness: 0.2 }), ring, Math.cos(a) * 115, 17, -Math.sin(a) * 115);
+          tile.rotation.y = a - Math.PI / 2;
+          if (i === 0) tag("Solar strip", tile, new THREE.Vector3(0, 12, 0));
+        }
+
+        // Module under the back of the ring: battery, XIAO, and the sensor
+        const module = new THREE.Group();
+        module.position.set(0, 88, -112);
+        root.add(module);
+        mesh(new RoundedBoxGeometry(96, 50, 40, 4, 6), shell(COLORS.green), module);
+        const battery = makeBattery();
+        battery.position.set(0, 8, -4);
+        module.add(battery);
+        explode(battery, [0, 0, -1], 70);
+        tag("Battery (slides out the back)", battery, new THREE.Vector3(0, 0, -40));
+        const xiao = makeXiao();
+        xiao.position.set(-24, -14, 6);
+        module.add(xiao);
+        tag("XIAO ESP32-C3", xiao, new THREE.Vector3(0, -8, 16));
+        const sensor = makeSensor();
+        sensor.scale.setScalar(0.9);
+        sensor.position.set(26, -30, 6);
+        module.add(sensor);
+        tag("Sensor, aimed into the can", sensor, new THREE.Vector3(10, -26, 10));
+        explode(sensor, [0, -1, 0], 50);
+        explode(module, [0, -1, 0], 30);
+      }
+
+      function buildClip(root) {
+        const clip = new THREE.Group();
+        clip.position.y = 70;
+        root.add(clip);
+        const base = mesh(new RoundedBoxGeometry(70, 5, 56, 2, 2), shell(COLORS.gold), clip, 0, 40, 0);
+        tag("Mounting plate", base, new THREE.Vector3(0, 10, -34));
+        [[-24, -18], [24, 18]].forEach(([x, z]) => {
+          const magnet = makeMagnet();
+          magnet.position.set(x, 44, z);
+          clip.add(magnet);
+          explode(magnet, [0, 1, 0], 25);
+        });
+        // Hinge and arms
+        const hinge = mesh(new THREE.CylinderGeometry(4, 4, 58, 24), mat(COLORS.green), clip, 0, 30, 0);
+        hinge.rotation.z = Math.PI / 2;
+        tag("Tilt hinge", hinge, new THREE.Vector3(38, 0, 0));
+        const cradle = new THREE.Group();
+        cradle.position.y = 30;
+        cradle.rotation.x = 0.12;
+        clip.add(cradle);
+        [-27, 27].forEach((x) => mesh(new RoundedBoxGeometry(5, 36, 44, 2, 2), shell(COLORS.gold), cradle, x, -18, 0));
+        [-24, 24].forEach((x) => mesh(new THREE.BoxGeometry(3, 3, 40), mat(0x8a7b4c), cradle, x, -36, 0));
+        const sensor = makeSensor();
+        sensor.position.set(0, -20, 0);
+        cradle.add(sensor);
+        tag("A02YYUW sensor", sensor, new THREE.Vector3(0, -24, 24));
+        explode(sensor, [0, -1, 0], 45);
+      }
+
+      function buildDemo(root) {
+        // Base with a window over the XIAO
+        const base = mesh(new RoundedBoxGeometry(150, 16, 110, 4, 5), shell(COLORS.dark), root, 0, 8, -125);
+        const window_ = mesh(new RoundedBoxGeometry(40, 2, 32, 2, 1), mat(0xa8d0ff, { transparent: true, opacity: 0.45 }), root, -40, 17, -110);
+        const xiao = makeXiao();
+        xiao.position.set(-40, 14, -110);
+        root.add(xiao);
+        tag("XIAO in the base", xiao, new THREE.Vector3(0, 10, 20));
+        explode(xiao, [0, 1, 0], 40);
+        explode(window_, [0, 1, 0], 70);
+        const usb = mesh(new THREE.CylinderGeometry(2.2, 2.2, 160, 10), mat(0x222222), root, -150, 6, -110);
+        usb.rotation.z = Math.PI / 2;
+        tag("USB to laptop or power bank", usb, new THREE.Vector3(-60, 10, 0));
+
+        // Post and arm
+        const post = mesh(new THREE.CylinderGeometry(8, 9, 330, 32), shell(COLORS.gold), root, 50, 180, -150);
+        explode(post, [0, 1, 0], 20);
+        const arm = new THREE.Group();
+        arm.position.set(50, 345, -150);
+        root.add(arm);
+        mesh(new RoundedBoxGeometry(24, 14, 225, 3, 4), shell(COLORS.gold), arm, 0, 0, 102);
+        const sensor = makeSensor();
+        sensor.position.set(0, -20, 202);
+        arm.add(sensor);
+        tag("Sensor pointing down", sensor, new THREE.Vector3(40, 0, 0));
+        explode(arm, [0, 1, 0], 45);
+
+        // Clear test bin with paper inside
+        const bin = new THREE.Group();
+        bin.position.set(50, 0, 52);
+        root.add(bin);
+        const glass = mat(0xcfe8ff, { transparent: true, opacity: 0.22, roughness: 0.1, depthWrite: false, side: THREE.DoubleSide });
+        mesh(new THREE.BoxGeometry(170, 2, 130), glass, bin, 0, 1, 0);
+        mesh(new THREE.BoxGeometry(170, 200, 2), glass, bin, 0, 101, 65);
+        mesh(new THREE.BoxGeometry(170, 200, 2), glass, bin, 0, 101, -65);
+        mesh(new THREE.BoxGeometry(2, 200, 130), glass, bin, 85, 101, 0);
+        mesh(new THREE.BoxGeometry(2, 200, 130), glass, bin, -85, 101, 0);
+        for (let i = 0; i < 26; i++) {
+          const p = mesh(new THREE.IcosahedronGeometry(14 + Math.random() * 10, 0), mat([0xf2f2f2, 0xe7dcc4, 0x9cc3e6][i % 3], { flatShading: true }), bin, (Math.random() - 0.5) * 140, 14 + Math.random() * 60, (Math.random() - 0.5) * 100);
+          p.rotation.set(Math.random() * 3, Math.random() * 3, 0);
+        }
+        tag("Clear test bin", bin, new THREE.Vector3(-70, 210, 0));
+        const beam = new THREE.Mesh(new THREE.ConeGeometry(30, 230, 32, 1, true), new THREE.MeshBasicMaterial({ color: 0x5ec7ff, transparent: true, opacity: 0.15, depthWrite: false, side: THREE.DoubleSide }));
+        beam.position.set(50, 205, 52);
+        root.add(beam);
+      }
+
+      // ---------------------------------------------------------------
+      // Picking a concept
+      // ---------------------------------------------------------------
+      let current = null;
+      const state = { explode: false, xray: false, labels: true, spin: true };
+      let explodeAmount = 0;
+
+      function show(concept) {
+        if (current) {
+          current.traverse((obj) => {
+            if (obj.isCSS2DObject) obj.element.remove();
+          });
+          scene.remove(current);
+        }
+        shellMats = [];
+        labels = [];
+        explodeParts = [];
+        explodeAmount = 0;
+
+        current = new THREE.Group();
+        concept.build(current);
+        scene.add(current);
+        applyXray();
+        labels.forEach((l) => (l.visible = state.labels));
+
+        // Frame the model
+        const box = new THREE.Box3().setFromObject(current);
+        const size = box.getSize(new THREE.Vector3());
+        const center = box.getCenter(new THREE.Vector3());
+        const radius = Math.max(size.x, size.y, size.z);
+        const fit = window.innerWidth / window.innerHeight < 0.8 ? 2.6 : 1.7;
+        controls.target.copy(center);
+        camera.position.set(center.x + radius * 0.9 * fit, center.y + radius * 0.55 * fit, center.z + radius * 1.1 * fit);
+        camera.near = radius / 100;
+        camera.far = radius * 40;
+        camera.updateProjectionMatrix();
+
+        document.querySelectorAll(".concept").forEach((b) => b.classList.toggle("active", b.dataset.id === concept.id));
+        document.querySelector("#infoName").textContent = concept.name;
+        document.querySelector("#infoTagline").textContent = concept.tagline;
+        document.querySelector("#infoBest").textContent = concept.best;
+        document.querySelector("#infoPros").innerHTML = concept.pros.map((p) => `<li>${p}</li>`).join("");
+        document.querySelector("#infoCons").innerHTML = concept.cons.map((c) => `<li>${c}</li>`).join("");
+        document.querySelector("#infoDifficulty").textContent = concept.difficulty;
+        document.querySelector("#infoTime").textContent = concept.time;
+        document.querySelector("#infoFilament").textContent = concept.filament;
+        document.querySelector("#infoSwap").textContent = concept.swap;
+      }
+
+      function applyXray() {
+        shellMats.forEach((m) => {
+          m.transparent = state.xray;
+          m.opacity = state.xray ? 0.22 : 1;
+          m.depthWrite = !state.xray;
+          m.needsUpdate = true;
+        });
+      }
+
+      document.querySelector("#conceptList").innerHTML = CONCEPTS.map(
+        (c) => `
+          <button type="button" class="concept" data-id="${c.id}">
+            <i style="background: ${c.color}"></i>
+            <div><strong>${c.name}</strong><span>${c.tagline}</span></div>
+          </button>
+        `
+      ).join("");
+      document.querySelector("#conceptList").addEventListener("click", (event) => {
+        const button = event.target.closest("[data-id]");
+        if (button) show(CONCEPTS.find((c) => c.id === button.dataset.id));
+      });
+
+      document.querySelector(".toolbar").addEventListener("click", (event) => {
+        const button = event.target.closest("[data-toggle]");
+        if (!button) return;
+        const name = button.dataset.toggle;
+        state[name] = !state[name];
+        button.classList.toggle("on", state[name]);
+        if (name === "xray") applyXray();
+        if (name === "labels") labels.forEach((l) => (l.visible = state.labels));
+        if (name === "spin") controls.autoRotate = state.spin;
+      });
+
+      // Mobile: the info card folds up
+      document.querySelector("#infoName").addEventListener("click", () => {
+        if (window.innerWidth <= 860) document.querySelector("#info").classList.toggle("collapsed");
+      });
+      if (window.innerWidth <= 860) document.querySelector("#info").classList.add("collapsed");
+
+      controls.addEventListener("start", () => {
+        if (state.spin) {
+          state.spin = false;
+          controls.autoRotate = false;
+          document.querySelector('[data-toggle="spin"]').classList.remove("on");
+        }
+      });
+
+      // ---------------------------------------------------------------
+      // Loop
+      // ---------------------------------------------------------------
+      const clock = new THREE.Clock();
+      function animate() {
+        const dt = Math.min(clock.getDelta(), 0.05);
+        explodeAmount += ((state.explode ? 1 : 0) - explodeAmount) * Math.min(1, dt * 4);
+        explodeParts.forEach(({ object, base, dir, dist }) => {
+          object.position.copy(base).addScaledVector(dir, dist * explodeAmount);
+        });
+        controls.update();
+        renderer.render(scene, camera);
+        labelRenderer.render(scene, camera);
+        requestAnimationFrame(animate);
+      }
+
+      window.addEventListener("resize", () => {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        labelRenderer.setSize(window.innerWidth, window.innerHeight);
+      });
+
+      show(CONCEPTS[0]);
+      animate();
+    </script>
+  </body>
+</html>

@@ -40,6 +40,13 @@ system installed: the three ultrasonic sensors and their sound beams, and the
 controller case with the XIAO ESP32-C3, 18650 battery, power switch, cable
 glands and Wi-Fi antenna. Bin dimensions are estimated from photos.
 
+## Case concepts
+
+`cases.html` shows six 3D-printable case concepts for the controller and
+sensor (Magnetic Brick, Hornet Hive, Cartridge Pod, Smart Rim, Sensor Clip and
+Demo Tower), each with an exploded view, X-ray, pros and cons, and rough print
+estimates.
+
 ## Demo accounts
 
 - Jordan Reyes: Admin
