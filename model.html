@@ -355,6 +355,7 @@
       <span class="sep"></span>
       <button type="button" data-toggle="doors">Open doors</button>
       <button type="button" data-toggle="xray">See-through</button>
+      <button type="button" data-toggle="canopy" class="on">Canopy</button>
       <button type="button" data-toggle="beams" class="on">Beams</button>
       <button type="button" data-toggle="labels" class="on">Labels</button>
       <button type="button" data-toggle="simulate" class="on">Simulate</button>
@@ -378,6 +379,8 @@
       const FILL_MAX = 0.7;
       const SENSOR_FACE = H - 0.047; // bottom of the sensor, where the sound leaves
       const BEAM_HALF_ANGLE = (15 * Math.PI) / 180;
+      const HOLE_Z = 0.12; // openings toward the front of the top
+      const SENSOR_Z = -0.1; // sensors toward the back, clear of the openings
 
       const STREAMS = [
         { key: "recycle", label: "Recycle", header: "#2f6fdb", fill: [0x4f86c6, 0x8fb3d9, 0xcfd8e3], level: 64 },
@@ -392,10 +395,10 @@
         battery: ["18650 battery", "Rechargeable lithium cell (≈3000–3500 mAh). Powers everything for months because the board sleeps between readings."],
         mosfet: ["AO3401 MOSFET (power switch)", "A tiny electronic switch. Turns the sensors on only for the second it takes to measure, so they don't drain the battery the rest of the time."],
         gland: ["PG7 cable glands", "Screw-on waterproof fittings that seal around each sensor cable where it enters the case."],
-        antenna: ["Wi-Fi antenna", "Comes with the XIAO. Placed near an opening because the steel box blocks Wi-Fi signal."],
+        antenna: ["Wi-Fi antenna", "Comes with the XIAO. Stuck under the top between two openings, because the steel box blocks Wi-Fi and the signal escapes through the holes."],
         cable: ["Sensor cable", "Four wires: power, ground and two data wires. Connects each sensor to the XIAO inside the case."],
         can: ["Inner can", "The plastic can inside each bay. Staff open the front door to swap it, and the sensors above stay put, so there's nothing to unplug."],
-        enclosure: ["Steel enclosure", "Green steel tri-bin with three bays: Recycle, Landfill, Compost. Each bay has a front door for emptying."],
+        enclosure: ["Steel enclosure", "Green steel tri-bin with three bays: Recycle, Landfill, Compost. People drop items through the round openings on top; staff empty each bay through its front door."],
         canopy: ["Rain canopy", "Keeps rain off the openings and shades the electronics from direct sun."],
         fill: ["Trash level", "What the sensor measures. Drag the sliders in the Sensor readings panel to change it."],
       };
@@ -531,29 +534,48 @@
         [D / 2, -D / 2].forEach((z) => box(0.04, H, 0.04, steelMat, x, H / 2, z, enclosure, "enclosure"));
       });
 
-      // Top plate
-      box(W + 0.06, 0.03, D + 0.06, steelMat, 0, H + 0.015, 0, enclosure, "enclosure");
-
-      // Front band with two round openings per bay
-      const band = new THREE.Shape();
-      band.moveTo(-W / 2, 0);
-      band.lineTo(W / 2, 0);
-      band.lineTo(W / 2, 0.16);
-      band.lineTo(-W / 2, 0.16);
-      band.lineTo(-W / 2, 0);
+      // Top plate with two round openings per bay, where people drop items in
+      const top = new THREE.Shape();
+      const tw = W / 2 + 0.03;
+      const td = D / 2 + 0.03;
+      top.moveTo(-tw, -td);
+      top.lineTo(tw, -td);
+      top.lineTo(tw, td);
+      top.lineTo(-tw, td);
+      top.lineTo(-tw, -td);
       for (let i = 0; i < 3; i++) {
         const cx = -W / 2 + BAY * (i + 0.5);
         [-0.13, 0.13].forEach((dx) => {
           const hole = new THREE.Path();
-          hole.absarc(cx + dx, 0.08, 0.052, 0, Math.PI * 2, true);
-          band.holes.push(hole);
+          // The shape's y becomes -z once the plate is laid flat.
+          hole.absarc(cx + dx, -HOLE_Z, 0.075, 0, Math.PI * 2, true);
+          top.holes.push(hole);
         });
       }
-      const bandMesh = new THREE.Mesh(new THREE.ExtrudeGeometry(band, { depth: 0.015, bevelEnabled: false, curveSegments: 28 }), steelMat);
-      bandMesh.position.set(0, H - 0.16, D / 2 - 0.015);
-      bandMesh.castShadow = true;
-      bandMesh.userData.part = "enclosure";
-      enclosure.add(bandMesh);
+      const topMesh = new THREE.Mesh(new THREE.ExtrudeGeometry(top, { depth: 0.03, bevelEnabled: false, curveSegments: 32 }), steelMat);
+      topMesh.rotation.x = -Math.PI / 2;
+      topMesh.position.y = H;
+      topMesh.castShadow = true;
+      topMesh.receiveShadow = true;
+      topMesh.userData.part = "enclosure";
+      enclosure.add(topMesh);
+
+      // A light rim around each opening so they're easy to spot
+      const rimMat = new THREE.MeshStandardMaterial({ color: 0xb9c2bd, metalness: 0.6, roughness: 0.35 });
+      xrayMats.push(rimMat);
+      for (let i = 0; i < 3; i++) {
+        const cx = -W / 2 + BAY * (i + 0.5);
+        [-0.13, 0.13].forEach((dx) => {
+          const ring = new THREE.Mesh(new THREE.TorusGeometry(0.078, 0.008, 10, 40), rimMat);
+          ring.rotation.x = Math.PI / 2;
+          ring.position.set(cx + dx, H + 0.032, HOLE_Z);
+          ring.userData.part = "enclosure";
+          enclosure.add(ring);
+        });
+      }
+
+      // Plain bands across the front and back, just under the top
+      box(W, 0.16, 0.015, steelMat, 0, H - 0.08, D / 2 - 0.0075, enclosure, "enclosure");
       box(W, 0.16, 0.015, steelMat, 0, H - 0.08, -D / 2 + 0.0075, enclosure, "enclosure");
 
       // Vertical bars on the sides and back
@@ -675,7 +697,7 @@
 
         // Sensor under the top plate, pointing down
         const sensor = new THREE.Group();
-        sensor.position.set(x, H, 0);
+        sensor.position.set(x, H, SENSOR_Z);
         sensor.userData.part = "sensor";
         scene.add(sensor);
         box(0.09, 0.004, 0.055, steelMat, 0, -0.003, 0, sensor, "sensor");
@@ -688,7 +710,7 @@
 
         // Sound beam and pulses
         const beam = new THREE.Mesh(coneGeometry, beamMat);
-        beam.position.set(x, SENSOR_FACE, 0);
+        beam.position.set(x, SENSOR_FACE, SENSOR_Z);
         scene.add(beam);
         const pulse = new THREE.Mesh(new THREE.RingGeometry(0.85, 1, 40), pulseMat);
         pulse.rotation.x = -Math.PI / 2;
@@ -704,7 +726,7 @@
       // ---------------------------------------------------------------
       // Controller case with the XIAO, battery, switch and glands
       // ---------------------------------------------------------------
-      const CASE = { x: 0, y: H - 0.05, z: -0.22, w: 0.13, h: 0.055, d: 0.085 };
+      const CASE = { x: 0.17, y: H - 0.05, z: -0.24, w: 0.13, h: 0.055, d: 0.085 };
       const caseMat = new THREE.MeshStandardMaterial({ color: 0xe9efe6, roughness: 0.6, transparent: true, opacity: 0.55, depthWrite: false });
       const controller = new THREE.Group();
       controller.position.set(CASE.x, CASE.y, CASE.z);
@@ -762,24 +784,24 @@
       const cableMat = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.6 });
       bays.forEach((bay, i) => {
         const end = controller.localToWorld(glandSpots[i].pos.clone());
-        const start = new THREE.Vector3(bay.x, H - 0.03, 0);
-        const mid = new THREE.Vector3((start.x + end.x) / 2, H - 0.012, (start.z + end.z) / 2 - 0.02);
-        const curve = new THREE.CatmullRomCurve3([start, new THREE.Vector3(start.x, H - 0.012, -0.03), mid, end]);
+        const start = new THREE.Vector3(bay.x, H - 0.03, SENSOR_Z);
+        const mid = new THREE.Vector3((start.x + end.x) / 2, H - 0.012, (start.z + end.z) / 2);
+        const curve = new THREE.CatmullRomCurve3([start, new THREE.Vector3(start.x, H - 0.012, SENSOR_Z - 0.02), mid, end]);
         const cable = new THREE.Mesh(new THREE.TubeGeometry(curve, 48, 0.0035, 8, false), cableMat);
         cable.userData.part = "cable";
         scene.add(cable);
       });
 
       // Wi-Fi antenna stuck inside the front band, near an opening
-      const antennaPos = new THREE.Vector3(0.0, H - 0.04, D / 2 - 0.03);
-      const antenna = new THREE.Mesh(new THREE.BoxGeometry(0.045, 0.015, 0.0012), new THREE.MeshStandardMaterial({ color: 0x0d0d0d, roughness: 0.4 }));
+      const antennaPos = new THREE.Vector3(0.0, H - 0.002, HOLE_Z);
+      const antenna = new THREE.Mesh(new THREE.BoxGeometry(0.045, 0.0012, 0.015), new THREE.MeshStandardMaterial({ color: 0x0d0d0d, roughness: 0.4 }));
       antenna.position.copy(antennaPos);
       antenna.userData.part = "antenna";
       scene.add(antenna);
       const antennaWire = new THREE.CatmullRomCurve3([
         controller.localToWorld(new THREE.Vector3(-0.042, -0.01, CASE.d / 2)),
-        new THREE.Vector3(-0.02, H - 0.03, 0.05),
-        antennaPos.clone().add(new THREE.Vector3(-0.02, 0, -0.005)),
+        new THREE.Vector3(0.08, H - 0.012, -0.05),
+        antennaPos.clone().add(new THREE.Vector3(0.02, -0.003, 0)),
       ]);
       scene.add(new THREE.Mesh(new THREE.TubeGeometry(antennaWire, 30, 0.0012, 6, false), cableMat));
 
@@ -789,7 +811,8 @@
           new THREE.RingGeometry(0.9, 1, 48, 1, Math.PI * 0.15, Math.PI * 0.7),
           new THREE.MeshBasicMaterial({ color: 0x3aa0ff, transparent: true, opacity: 0.5, depthWrite: false, side: THREE.DoubleSide })
         );
-        wave.position.copy(antennaPos).add(new THREE.Vector3(0, 0.02, 0.02));
+        wave.position.copy(antennaPos).add(new THREE.Vector3(0, 0.035, 0));
+        wave.rotation.x = -Math.PI / 2;
         wave.userData.offset = k / 3;
         scene.add(wave);
         return wave;
@@ -843,14 +866,14 @@
       // ---------------------------------------------------------------
       // Toolbar: views and toggles
       // ---------------------------------------------------------------
-      const state = { doors: false, xray: false, beams: true, labels: true, simulate: true };
+      const state = { doors: false, xray: false, beams: true, labels: true, simulate: true, canopy: true };
       const portrait = () => window.innerWidth / window.innerHeight < 0.8;
       const VIEWS = {
         get overview() {
           return { pos: portrait() ? [4.4, 2.9, 5.2] : [2.7, 1.8, 3.1], target: [0, 0.6, 0], xray: false };
         },
-        sensor: { pos: [-0.36, 0.72, 0.62], target: [-W / 3, 0.86, 0], xray: true },
-        controller: { pos: [0.1, 1.13, -0.06], target: [-0.01, H - 0.06, -0.22], xray: true },
+        sensor: { pos: [-0.36, 0.72, 0.55], target: [-W / 3, 0.86, SENSOR_Z], xray: true },
+        controller: { pos: [0.27, 1.13, -0.08], target: [0.16, H - 0.06, -0.24], xray: true },
       };
       let tween = null;
 
@@ -870,6 +893,7 @@
           });
           caseMat.opacity = value ? 0.3 : 0.55;
         }
+        if (name === "canopy") canopy.visible = value;
         if (name === "beams") bays.forEach((bay) => [bay.beam, bay.pulse, bay.echo].forEach((m) => (m.visible = value)));
       }
 
@@ -969,11 +993,11 @@
           const up = Math.max(cycle * 2 - 1, 0);
           const downY = SENSOR_FACE - length * down;
           const radiusAt = (dist) => Math.min(dist, spread) * Math.tan(BEAM_HALF_ANGLE) + 0.004;
-          bay.pulse.position.set(bay.x, downY, 0);
+          bay.pulse.position.set(bay.x, downY, SENSOR_Z);
           bay.pulse.scale.setScalar(radiusAt(length * down));
           bay.pulse.visible = state.beams && cycle < 0.5;
           const upY = top + length * up;
-          bay.echo.position.set(bay.x, upY, 0);
+          bay.echo.position.set(bay.x, upY, SENSOR_Z);
           bay.echo.scale.setScalar(radiusAt(SENSOR_FACE - upY));
           bay.echo.visible = state.beams && cycle >= 0.5;
         });
