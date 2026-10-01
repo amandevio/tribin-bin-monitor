@@ -221,6 +221,73 @@
         pointer-events: none;
       }
 
+      .steps {
+        top: 14px;
+        left: 50%;
+        width: min(400px, calc(100% - 640px));
+        min-width: 300px;
+        padding: 14px 16px;
+        transform: translateX(-50%);
+      }
+
+      .steps-count {
+        margin: 0;
+        color: var(--muted);
+        font-size: 12px;
+        font-weight: 700;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+      }
+
+      .steps-text {
+        margin: 6px 0 10px;
+        font-family: "Archivo", sans-serif;
+        font-size: 17px;
+        font-stretch: 108%;
+        font-weight: 700;
+        line-height: 1.3;
+      }
+
+      .steps-bar {
+        height: 5px;
+        overflow: hidden;
+        background: #ece7da;
+        border-radius: 3px;
+      }
+
+      .steps-bar span {
+        display: block;
+        width: 0;
+        height: 100%;
+        background: var(--green);
+        transition: width 0.3s;
+      }
+
+      .steps-buttons {
+        display: flex;
+        justify-content: flex-end;
+        gap: 8px;
+        margin-top: 10px;
+      }
+
+      .steps-buttons button {
+        padding: 6px 12px;
+        color: var(--text);
+        background: white;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        font: inherit;
+        font-size: 13px;
+        font-weight: 600;
+        cursor: pointer;
+      }
+
+      .steps-buttons button:last-child {
+        color: white;
+        background: var(--green);
+        border-color: var(--green);
+      }
+
       .toggle-panels {
         display: none;
       }
@@ -276,6 +343,16 @@
 
         .stream {
           padding: 6px 0;
+        }
+
+        .steps {
+          top: 76px;
+          right: 10px;
+          left: 10px;
+          width: auto;
+          min-width: 0;
+          z-index: 6;
+          transform: none;
         }
 
         .info {
@@ -340,6 +417,16 @@
       <div id="streams"></div>
     </div>
 
+    <div class="card steps" id="steps" hidden>
+      <p class="steps-count">Battery swap · step <b id="stepNum">1</b> of 6</p>
+      <p class="steps-text" id="stepText"></p>
+      <div class="steps-bar"><span id="stepBar"></span></div>
+      <div class="steps-buttons">
+        <button type="button" id="swapReplay">Replay</button>
+        <button type="button" id="swapClose">Done</button>
+      </div>
+    </div>
+
     <div class="card info" id="info" hidden>
       <button type="button" class="close" id="infoClose" aria-label="Close">×</button>
       <h2 id="infoTitle"></h2>
@@ -352,6 +439,7 @@
       <button type="button" data-view="overview">Overview</button>
       <button type="button" data-view="sensor">Sensor</button>
       <button type="button" data-view="controller">Controller</button>
+      <button type="button" data-action="swap">Swap battery</button>
       <span class="sep"></span>
       <button type="button" data-toggle="doors">Open doors</button>
       <button type="button" data-toggle="xray">See-through</button>
@@ -391,9 +479,11 @@
 
       const PARTS = {
         sensor: ["Ultrasonic sensor (A02YYUW)", "Sends a sound pulse straight down and times the echo off the top of the trash. Shorter distance = fuller compartment. Waterproof (IP67) and reads from 3 cm to 4.5 m. One per compartment."],
-        controller: ["Controller case (3D printed)", "Your custom PETG/ASA case. Holds the XIAO board, the 18650 battery and the power switch. Mounted under the top in the middle bay, out of the rain."],
+        controller: ["Controller case (3D printed)", "Your custom PETG/ASA case, hung just inside the middle door so a worker can reach it when the door is open. Back compartment: XIAO board and power switch. Front compartment: the battery, behind a tool-free hatch."],
         xiao: ["XIAO ESP32-C3 (the brain)", "Tiny Wi-Fi computer. Reads the three sensors, turns distance into a fill %, sends it to the app, then deep-sleeps to save battery. Also charges the battery and reports its level."],
-        battery: ["18650 battery", "Rechargeable lithium cell (≈3000–3500 mAh). Powers everything for months because the board sleeps between readings."],
+        pack: ["Plug-in battery pack", "An 18650 cell with a short lead and a plug that only fits one way. Workers unplug the old pack and plug in a charged one, so it can't go in backwards. Spares charge in the custodial office."],
+        hatch: ["Battery hatch", "The front of the case flips down after a quarter turn of the latch. No tools. Only the battery is behind it; the electronics stay sealed in the back compartment behind a divider. A gasket keeps rain out."],
+        latch: ["Quarter-turn latch", "Turn it by hand to open or lock the battery hatch."],
         mosfet: ["AO3401 MOSFET (power switch)", "A tiny electronic switch. Turns the sensors on only for the second it takes to measure, so they don't drain the battery the rest of the time."],
         gland: ["PG7 cable glands", "Screw-on waterproof fittings that seal around each sensor cable where it enters the case."],
         antenna: ["Wi-Fi antenna", "Comes with the XIAO. Stuck under the top right beside the opening, because the steel box blocks Wi-Fi and the signal escapes through the hole."],
@@ -721,53 +811,112 @@
       label("Inner can", bays[0].fill, new THREE.Vector3(0, 0.15, 0.3));
 
       // ---------------------------------------------------------------
-      // Controller case with the XIAO, battery, switch and glands
+      // Controller case, mounted just inside the middle door so workers
+      // can reach the battery hatch without tools or a ladder
       // ---------------------------------------------------------------
-      const CASE = { x: 0.17, y: H - 0.05, z: -0.24, w: 0.13, h: 0.055, d: 0.085 };
-      const caseMat = new THREE.MeshStandardMaterial({ color: 0xe9efe6, roughness: 0.6, transparent: true, opacity: 0.55, depthWrite: false });
+      const CASE = { x: 0.2, y: 0.8, z: 0.305, w: 0.15, h: 0.07, d: 0.1 };
+      const caseMat = new THREE.MeshStandardMaterial({ color: 0xe6ece2, roughness: 0.6, transparent: true, opacity: 0.55, depthWrite: false });
       const controller = new THREE.Group();
       controller.position.set(CASE.x, CASE.y, CASE.z);
       controller.userData.part = "controller";
       scene.add(controller);
-      const shell = box(CASE.w, CASE.h, CASE.d, caseMat, 0, 0, 0, controller, "controller");
-      shell.castShadow = false;
-      box(CASE.w + 0.004, 0.004, CASE.d + 0.004, new THREE.MeshStandardMaterial({ color: 0xd9e3d4, transparent: true, opacity: 0.6 }), 0, CASE.h / 2 + 0.002, 0, controller, "controller");
 
-      // XIAO board with USB-C port
+      // Shell without a front face (the hatch is the front), plus a divider
+      // that keeps the electronics sealed away from the battery bay
+      const shellPieces = [
+        [CASE.w, 0.004, CASE.d, 0, CASE.h / 2, 0], // top
+        [CASE.w, 0.004, CASE.d, 0, -CASE.h / 2, 0], // bottom
+        [0.004, CASE.h, CASE.d, -CASE.w / 2, 0, 0], // left
+        [0.004, CASE.h, CASE.d, CASE.w / 2, 0, 0], // right
+        [CASE.w, CASE.h, 0.004, 0, 0, -CASE.d / 2], // back
+        [CASE.w, CASE.h, 0.003, 0, 0, 0.0], // divider
+      ];
+      shellPieces.forEach(([w, h, d, x, y, z]) => {
+        const piece = box(w, h, d, caseMat, x, y, z, controller, "controller");
+        piece.castShadow = false;
+      });
+
+      // Steel straps holding the case up to the underside of the top
+      [-1, 1].forEach((side) => {
+        box(0.012, H - (CASE.y + CASE.h / 2), 0.004, steelMat, CASE.x + side * (CASE.w / 2 - 0.02), (H + CASE.y + CASE.h / 2) / 2, CASE.z - CASE.d / 2 + 0.002, scene, "controller");
+      });
+
+      // Back compartment: XIAO board and the power switch
       const xiao = new THREE.Group();
-      xiao.position.set(-0.042, -0.012, -0.014);
+      xiao.position.set(-0.035, -0.02, -0.025);
       xiao.userData.part = "xiao";
       controller.add(xiao);
       box(0.0215, 0.0016, 0.0175, new THREE.MeshStandardMaterial({ color: 0x23338a, roughness: 0.5 }), 0, 0, 0, xiao, "xiao");
       box(0.012, 0.0025, 0.012, new THREE.MeshStandardMaterial({ color: 0xb8bcc2, metalness: 0.9, roughness: 0.3 }), 0.002, 0.0018, 0, xiao, "xiao");
       box(0.009, 0.0032, 0.007, new THREE.MeshStandardMaterial({ color: 0xcfd3d8, metalness: 0.9 }), -0.011, 0.002, 0, xiao, "xiao");
 
-      // 18650 battery in a holder
-      const battery = new THREE.Group();
-      battery.position.set(0.02, -0.014, -0.012);
-      battery.userData.part = "battery";
-      controller.add(battery);
-      box(0.077, 0.012, 0.021, new THREE.MeshStandardMaterial({ color: 0x1b1b1b }), 0, -0.004, 0, battery, "battery");
-      const cell = new THREE.Mesh(new THREE.CylinderGeometry(0.0092, 0.0092, 0.065, 20), new THREE.MeshStandardMaterial({ color: 0x2d6fd6, roughness: 0.4 }));
-      cell.rotation.z = Math.PI / 2;
-      cell.position.y = 0.004;
-      cell.userData.part = "battery";
-      battery.add(cell);
-
-      // Power switch and its little carrier board
       const mosfet = new THREE.Group();
-      mosfet.position.set(-0.042, -0.012, 0.02);
+      mosfet.position.set(0.02, -0.02, -0.025);
       mosfet.userData.part = "mosfet";
       controller.add(mosfet);
       box(0.014, 0.0016, 0.01, new THREE.MeshStandardMaterial({ color: 0x1f6b3a }), 0, 0, 0, mosfet, "mosfet");
       box(0.003, 0.0012, 0.0016, new THREE.MeshStandardMaterial({ color: 0x111111 }), 0, 0.0014, 0, mosfet, "mosfet");
 
-      // Cable glands where the sensor cables come in
+      // Battery socket: the half of the connector that stays in the case
+      const socket = box(0.01, 0.006, 0.006, new THREE.MeshStandardMaterial({ color: 0xf2f2f2 }), 0.052, -0.012, 0.012, controller, "pack");
+
+      // Front compartment: plug-in battery pack (18650 + lead + plug that only fits one way)
+      const PACK_IN = new THREE.Vector3(-0.008, -0.016, 0.026);
+      function makePack(color, text) {
+        const pack = new THREE.Group();
+        pack.userData.part = "pack";
+        const cell = new THREE.Mesh(new THREE.CylinderGeometry(0.0095, 0.0095, 0.068, 24), new THREE.MeshStandardMaterial({ color, roughness: 0.45 }));
+        cell.rotation.z = Math.PI / 2;
+        cell.userData.part = "pack";
+        pack.add(cell);
+        const band = new THREE.Mesh(new THREE.CylinderGeometry(0.0098, 0.0098, 0.004, 24), new THREE.MeshStandardMaterial({ color: 0x222222, roughness: 0.5 }));
+        band.position.x = 0.033;
+        band.rotation.z = Math.PI / 2;
+        band.userData.part = "pack";
+        pack.add(band);
+        const lead = new THREE.Mesh(
+          new THREE.TubeGeometry(new THREE.CatmullRomCurve3([new THREE.Vector3(0.034, 0, 0), new THREE.Vector3(0.045, 0.004, -0.004), new THREE.Vector3(0.05, 0.004, -0.012)]), 12, 0.0012, 6, false),
+          new THREE.MeshStandardMaterial({ color: 0x1a1a1a })
+        );
+        pack.add(lead);
+        const plug = box(0.009, 0.0055, 0.0055, new THREE.MeshStandardMaterial({ color: 0xf2f2f2 }), 0.054, 0.004, -0.012, pack, "pack");
+        plug.userData.part = "pack";
+        const tag = label(text, pack, new THREE.Vector3(0, 0.022, 0.01), true);
+        tag.userData.swapOnly = true;
+        controller.add(pack);
+        return pack;
+      }
+      const installedPack = makePack(0x7d8796, "Old battery · 14%");
+      const freshPack = makePack(0x2e9e5b, "Charged battery · 100%");
+      installedPack.position.copy(PACK_IN);
+      freshPack.visible = false;
+
+      // Hatch on the front, hinged at the bottom, with a quarter-turn latch
+      const hatch = new THREE.Group();
+      hatch.position.set(0, -CASE.h / 2, CASE.d / 2);
+      hatch.userData.part = "hatch";
+      controller.add(hatch);
+      const hatchMat = new THREE.MeshStandardMaterial({ color: 0xdfe6da, roughness: 0.55 });
+      box(CASE.w - 0.006, CASE.h - 0.006, 0.005, hatchMat, 0, (CASE.h - 0.006) / 2 + 0.003, 0.0025, hatch, "hatch");
+      box(CASE.w - 0.02, 0.003, 0.002, new THREE.MeshStandardMaterial({ color: 0x2a2a2a }), 0, CASE.h - 0.012, 0.006, hatch, "hatch"); // gasket line
+      const latch = new THREE.Group();
+      latch.position.set(0, CASE.h * 0.62, 0.007);
+      latch.userData.part = "latch";
+      hatch.add(latch);
+      const knob = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.008, 0.005, 20), new THREE.MeshStandardMaterial({ color: 0x043927 }));
+      knob.rotation.x = Math.PI / 2;
+      knob.userData.part = "latch";
+      latch.add(knob);
+      box(0.004, 0.018, 0.006, new THREE.MeshStandardMaterial({ color: 0xc4b581 }), 0, 0, 0.004, latch, "latch");
+      // A printed battery outline so it's obvious what's behind the hatch
+      box(0.03, 0.012, 0.0015, new THREE.MeshStandardMaterial({ color: 0x9aa59c }), -0.035, CASE.h * 0.3, 0.0055, hatch, "hatch");
+
+      // Cable glands on the sides and back, away from the hatch
       const glandMat = new THREE.MeshStandardMaterial({ color: 0x151515, roughness: 0.6 });
       const glandSpots = [
-        { pos: new THREE.Vector3(-CASE.w / 2 - 0.006, 0, 0), rot: new THREE.Euler(0, 0, Math.PI / 2) },
-        { pos: new THREE.Vector3(0, 0, CASE.d / 2 + 0.006), rot: new THREE.Euler(Math.PI / 2, 0, 0) },
-        { pos: new THREE.Vector3(CASE.w / 2 + 0.006, 0, 0), rot: new THREE.Euler(0, 0, Math.PI / 2) },
+        { pos: new THREE.Vector3(-CASE.w / 2 - 0.006, 0.012, -0.03), rot: new THREE.Euler(0, 0, Math.PI / 2) },
+        { pos: new THREE.Vector3(-0.02, 0.012, -CASE.d / 2 - 0.006), rot: new THREE.Euler(Math.PI / 2, 0, 0) },
+        { pos: new THREE.Vector3(CASE.w / 2 + 0.006, 0.012, -0.03), rot: new THREE.Euler(0, 0, Math.PI / 2) },
       ];
       glandSpots.forEach(({ pos, rot }) => {
         const gland = new THREE.Mesh(new THREE.CylinderGeometry(0.0075, 0.0085, 0.014, 6), glandMat);
@@ -777,32 +926,38 @@
         controller.add(gland);
       });
 
-      // Sensor cables from each sensor to its gland
+      // Sensor cables run along the underside of the top, then down to the case
       const cableMat = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.6 });
       bays.forEach((bay, i) => {
         const end = controller.localToWorld(glandSpots[i].pos.clone());
         const start = new THREE.Vector3(bay.x, H - 0.03, SENSOR_Z);
-        const mid = new THREE.Vector3((start.x + end.x) / 2, H - 0.012, (start.z + end.z) / 2);
-        const curve = new THREE.CatmullRomCurve3([start, new THREE.Vector3(start.x, H - 0.012, SENSOR_Z - 0.02), mid, end]);
-        const cable = new THREE.Mesh(new THREE.TubeGeometry(curve, 48, 0.0035, 8, false), cableMat);
+        const curve = new THREE.CatmullRomCurve3([
+          start,
+          new THREE.Vector3(bay.x, H - 0.012, SENSOR_Z - 0.01),
+          new THREE.Vector3((bay.x + end.x) / 2, H - 0.012, -0.32),
+          new THREE.Vector3(end.x + (i === 1 ? 0 : (i === 0 ? -0.03 : 0.03)), H - 0.02, end.z - 0.04),
+          new THREE.Vector3(end.x + (i === 1 ? 0 : (i === 0 ? -0.02 : 0.02)), end.y + 0.03, end.z - (i === 1 ? 0.02 : 0)),
+          end,
+        ]);
+        const cable = new THREE.Mesh(new THREE.TubeGeometry(curve, 64, 0.0035, 8, false), cableMat);
         cable.userData.part = "cable";
         scene.add(cable);
       });
 
-      // Wi-Fi antenna stuck inside the front band, near an opening
+      // Wi-Fi antenna under the top, right beside the middle opening
       const antennaPos = new THREE.Vector3(HOLE_R + 0.045, H - 0.002, HOLE_Z);
       const antenna = new THREE.Mesh(new THREE.BoxGeometry(0.045, 0.0012, 0.015), new THREE.MeshStandardMaterial({ color: 0x0d0d0d, roughness: 0.4 }));
       antenna.position.copy(antennaPos);
       antenna.userData.part = "antenna";
       scene.add(antenna);
       const antennaWire = new THREE.CatmullRomCurve3([
-        controller.localToWorld(new THREE.Vector3(-0.042, -0.01, CASE.d / 2)),
-        new THREE.Vector3(HOLE_R + 0.05, H - 0.012, -0.08),
-        antennaPos.clone().add(new THREE.Vector3(0, -0.003, -0.01)),
+        controller.localToWorld(new THREE.Vector3(-0.035, CASE.h / 2, -0.03)),
+        new THREE.Vector3(CASE.x - 0.02, H - 0.05, 0.2),
+        antennaPos.clone().add(new THREE.Vector3(0, -0.003, 0.012)),
       ]);
       scene.add(new THREE.Mesh(new THREE.TubeGeometry(antennaWire, 30, 0.0012, 6, false), cableMat));
 
-      // Wi-Fi waves heading out through the front
+      // Wi-Fi waves rising out through the opening
       const waves = [0, 1, 2].map((k) => {
         const wave = new THREE.Mesh(
           new THREE.RingGeometry(0.9, 1, 48, 1, Math.PI * 0.15, Math.PI * 0.7),
@@ -817,10 +972,10 @@
 
       label("Controller case", controller, new THREE.Vector3(0, 0.07, 0));
       label("Wi-Fi antenna", antenna, new THREE.Vector3(0, 0.05, 0.03));
-      label("XIAO ESP32-C3", xiao, new THREE.Vector3(0, 0.022, 0), true);
-      label("18650 battery", battery, new THREE.Vector3(0.012, 0.024, 0), true);
-      label("MOSFET switch", mosfet, new THREE.Vector3(0, 0.012, -0.01), true);
-      label("Cable gland", controller, new THREE.Vector3(-CASE.w / 2 - 0.02, -0.02, 0), true);
+      label("XIAO ESP32-C3", xiao, new THREE.Vector3(0, 0.02, 0), true);
+      label("MOSFET switch", mosfet, new THREE.Vector3(0, 0.012, 0), true);
+      label("Battery hatch", hatch, new THREE.Vector3(0.045, 0.05, 0.01), true);
+      label("Cable gland", controller, new THREE.Vector3(-CASE.w / 2 - 0.025, 0.012, -0.03), true);
 
       // ---------------------------------------------------------------
       // Readings panel
@@ -837,7 +992,13 @@
             </div>
           `
         )
-        .join("");
+        .join("") +
+        `
+          <div class="stream">
+            <div class="stream-top">Controller battery<span id="batteryStatus"></span></div>
+            <div class="stream-meta" id="batteryMeta"></div>
+          </div>
+        `;
 
       streamsEl.addEventListener("input", (event) => {
         const i = event.target.dataset.slider;
@@ -846,7 +1007,17 @@
         setToggle("simulate", false);
       });
 
+      let batteryLevel = 14;
+      let batterySwappedAt = 0;
+
       function updateReadings() {
+        const low = batteryLevel < 20;
+        const batteryStatus = document.querySelector("#batteryStatus");
+        batteryStatus.textContent = `${Math.round(batteryLevel)}% · ${low ? "Replace battery" : "Good"}`;
+        batteryStatus.style.color = low ? "var(--full)" : "var(--ok)";
+        document.querySelector("#batteryMeta").textContent = low
+          ? "The app flags this for workers. Tap Swap battery to see how."
+          : batterySwappedAt ? "Swapped just now" : "Lasts months between swaps";
         bays.forEach((bay, i) => {
           const fillTop = CAN_BOTTOM + 0.01 + (bay.level / 100) * FILL_MAX;
           const distanceCm = Math.round((SENSOR_FACE - fillTop) * 100);
@@ -870,7 +1041,7 @@
           return { pos: portrait() ? [4.4, 2.9, 5.2] : [2.7, 1.8, 3.1], target: [0, 0.6, 0], xray: false };
         },
         sensor: { pos: [-0.36, 0.72, 0.55], target: [-W / 3, 0.86, SENSOR_Z], xray: true },
-        controller: { pos: [0.27, 1.13, -0.08], target: [0.16, H - 0.06, -0.24], xray: true },
+        controller: { pos: [0.5, 0.95, 0.85], target: [0.2, 0.8, 0.305], xray: true },
       };
       let tween = null;
 
@@ -878,7 +1049,9 @@
         state[name] = value;
         document.querySelector(`[data-toggle="${name}"]`).classList.toggle("on", value);
         if (name === "doors") {
-          doors.forEach((door) => (door.target = value ? -1.75 : 0));
+          doors.forEach((door, i) => {
+            if (!(swap.active && i === 1)) door.target = value ? -1.75 : 0;
+          });
           document.querySelector('[data-toggle="doors"]').textContent = value ? "Close doors" : "Open doors";
         }
         if (name === "xray") {
@@ -898,6 +1071,7 @@
         const button = event.target.closest("button");
         if (!button) return;
         if (button.dataset.toggle) setToggle(button.dataset.toggle, !state[button.dataset.toggle]);
+        if (button.dataset.action === "swap") startSwap();
         if (button.dataset.view) {
           const view = VIEWS[button.dataset.view];
           tween = { pos: new THREE.Vector3(...view.pos), target: new THREE.Vector3(...view.target) };
@@ -905,6 +1079,91 @@
         }
       });
       controls.addEventListener("start", () => (tween = null));
+
+      // ---------------------------------------------------------------
+      // Battery swap walkthrough
+      // ---------------------------------------------------------------
+      const SWAP_STEPS = [
+        [0, "Open the bin's front door. The controller case hangs right inside, at arm's reach."],
+        [2.0, "Turn the latch a quarter turn by hand. No tools needed."],
+        [3.2, "Flip the battery hatch down."],
+        [4.6, "Slide the old battery out and unplug it."],
+        [7.0, "Plug in a charged battery and slide it in. The plug only fits one way."],
+        [9.0, "Close the hatch, turn the latch back, and close the door."],
+        [11.4, "Done! About 30 seconds. The app now shows the battery at 100%."],
+      ];
+      const swap = { active: false, t: 0 };
+      const ramp = (t, a, b) => {
+        const x = Math.min(1, Math.max(0, (t - a) / (b - a)));
+        return x * x * (3 - 2 * x);
+      };
+
+      function startSwap() {
+        swap.active = true;
+        swap.t = 0;
+        batteryLevel = 14;
+        batterySwappedAt = 0;
+        installedPack.visible = true;
+        installedPack.position.copy(PACK_IN);
+        freshPack.visible = false;
+        hatch.rotation.x = 0;
+        latch.rotation.z = 0;
+        setToggle("xray", false);
+        setToggle("doors", false);
+        caseMat.opacity = 0.9;
+        tween = {
+          pos: portrait() ? new THREE.Vector3(0.48, 0.93, 1.0) : new THREE.Vector3(0.4, 0.89, 0.7),
+          target: new THREE.Vector3(0.2, 0.795, 0.33),
+        };
+        // On phones, fold the readings away so the case stays in view.
+        if (window.innerWidth <= 760) document.querySelector("#readings").classList.add("collapsed");
+        document.querySelector("#info").hidden = true;
+        document.querySelector("#steps").hidden = false;
+      }
+
+      function endSwap() {
+        swap.active = false;
+        doors[1].target = state.doors ? -1.75 : 0;
+        caseMat.opacity = state.xray ? 0.3 : 0.55;
+        document.querySelector("#steps").hidden = true;
+      }
+
+      function updateSwap(dt) {
+        if (!swap.active) return;
+        swap.t += dt;
+        const t = swap.t;
+
+        doors[1].target = t < 10.2 ? -1.75 : 0;
+        latch.rotation.z = (Math.PI / 2) * (ramp(t, 2.0, 2.8) - ramp(t, 9.8, 10.3));
+        hatch.rotation.x = 1.9 * (ramp(t, 3.2, 4.2) - ramp(t, 9.0, 9.8));
+
+        // Old pack slides out toward the worker, then is taken away
+        const out = ramp(t, 4.6, 6.0);
+        const away = ramp(t, 6.0, 6.8);
+        installedPack.position.set(PACK_IN.x + away * 0.05, PACK_IN.y - away * 0.25, PACK_IN.z + out * 0.11 + away * 0.05);
+        installedPack.visible = t < 6.8;
+
+        // Charged pack comes in and is plugged in
+        freshPack.visible = t >= 7.0;
+        const slideIn = ramp(t, 7.4, 8.8);
+        const arrive = ramp(t, 7.0, 7.4);
+        freshPack.position.set(PACK_IN.x + (1 - arrive) * 0.05, PACK_IN.y - (1 - arrive) * 0.15, PACK_IN.z + (1 - slideIn) * 0.11);
+        if (t >= 8.8 && !batterySwappedAt) {
+          batteryLevel = 100;
+          batterySwappedAt = Date.now();
+        }
+
+        let step = 0;
+        SWAP_STEPS.forEach(([at], i) => {
+          if (t >= at) step = i;
+        });
+        document.querySelector("#stepNum").textContent = Math.min(step + 1, 6);
+        document.querySelector("#stepText").textContent = SWAP_STEPS[step][1];
+        document.querySelector("#stepBar").style.width = `${Math.min(100, (t / 11.4) * 100)}%`;
+      }
+
+      document.querySelector("#swapReplay").addEventListener("click", startSwap);
+      document.querySelector("#swapClose").addEventListener("click", endSwap);
 
       // Mobile: collapse panels
       document.querySelector("#titleCard").addEventListener("click", (event) => {
@@ -1006,6 +1265,8 @@
           wave.material.opacity = 0.55 * (1 - p);
         });
 
+        updateSwap(dt);
+
         // Doors swing smoothly
         doors.forEach((door) => {
           door.angle += (door.target - door.angle) * Math.min(1, dt * 6);
@@ -1022,7 +1283,10 @@
 
         // Small part labels only appear up close
         const near = camera.position.distanceTo(controllerWorld) < 0.7;
-        labels.forEach((tag) => (tag.visible = state.labels && (tag.userData.small ? near : true)));
+        labels.forEach((tag) => {
+          if (tag.userData.swapOnly) tag.visible = state.labels && swap.active && tag.parent.visible;
+          else tag.visible = state.labels && (tag.userData.small ? near : true);
+        });
 
         readingsTimer += dt;
         if (readingsTimer > 0.1) {
