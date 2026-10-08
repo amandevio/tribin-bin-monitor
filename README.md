@@ -1,6 +1,6 @@
 # Tribin: Simple Version
 
-Shows how full each part (trash, recycling, aluminum) of every Sac State
+Shows how full each part (recycle, landfill, compost) of every Sac State
 tri-bin is, so workers know which bins to empty.
 
 Open `index.html` in a browser (or use VS Code Live Server). An internet
@@ -30,6 +30,7 @@ connection is needed for the map.
   you walk, and it tells you when you've arrived. (Your browser will ask for
   location permission the first time. Routes come from the free OpenStreetMap
   routing service at routing.openstreetmap.de.)
+- **History**: a log of recently emptied bins, with who emptied them and when.
 - **Settings** (admins only): add, edit, and remove workers, and change when a
   bin counts as full.
 

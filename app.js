@@ -6,9 +6,9 @@ const UPDATE_EVERY_SECONDS = 3;
 const SAVE_KEY = "tribin-simple-v1";
 
 const COMPARTMENTS = [
-  { key: "trash", label: "Trash" },
-  { key: "recycle", label: "Recycling" },
-  { key: "aluminum", label: "Aluminum" },
+  { key: "recycling", label: "Recycle" },
+  { key: "landfill", label: "Landfill" },
+  { key: "compost", label: "Compost" },
 ];
 
 const STATUS_TEXT = { full: "Needs emptying", almost: "Almost full", ok: "OK", offline: "Sensor offline" };
@@ -35,9 +35,9 @@ function defaultData() {
   const levels = {};
   allBins.forEach((bin) => {
     levels[bin.id] = {
-      trash: random() ** 1.6 * 96,
-      recycle: random() ** 1.6 * 85,
-      aluminum: random() ** 1.6 * 70,
+      landfill: random() ** 1.6 * 96,
+      recycling: random() ** 1.6 * 85,
+      compost: random() ** 1.6 * 70,
       emptiedAt: Date.now() - random() * 8 * 60 * 60 * 1000,
       emptiedBy: null,
     };
@@ -66,6 +66,17 @@ function loadData() {
     if (saved && saved.levels && saved.workers) {
       // Data saved before sensors were tracked gets a sensor status now.
       if (!("online" in Object.values(saved.levels)[0])) seedSensorStatus(saved.levels);
+      // Data saved with the old compartment names gets the new names.
+      Object.values(saved.levels).forEach((level) => {
+        if ("trash" in level) {
+          level.landfill = level.trash;
+          level.recycling = level.recycle;
+          level.compost = level.aluminum;
+          delete level.trash;
+          delete level.recycle;
+          delete level.aluminum;
+        }
+      });
       return saved;
     }
   } catch {
@@ -127,9 +138,9 @@ function readSensors() {
     level.lastReading = Date.now();
 
     const speed = fillSpeed(bin.id);
-    level.trash = Math.min(100, level.trash + Math.random() * 0.25 * speed);
-    level.recycle = Math.min(100, level.recycle + Math.random() * 0.18 * speed);
-    level.aluminum = Math.min(100, level.aluminum + Math.random() * 0.1 * speed);
+    level.landfill = Math.min(100, level.landfill + Math.random() * 0.25 * speed);
+    level.recycling = Math.min(100, level.recycling + Math.random() * 0.18 * speed);
+    level.compost = Math.min(100, level.compost + Math.random() * 0.1 * speed);
 
     // In the demo, other workers empty some of the full bins on their own.
     if (fullest(bin.id) >= 85 && Math.random() < 0.04) {
@@ -157,7 +168,7 @@ function statusOf(percent) {
 
 function fullest(binId) {
   const level = data.levels[binId];
-  return Math.max(level.trash, level.recycle, level.aluminum);
+  return Math.max(level.landfill, level.recycling, level.compost);
 }
 
 function isOnline(binId) {
@@ -458,9 +469,16 @@ document.querySelector(".nav").addEventListener("click", (event) => {
 });
 
 function render() {
-  document.querySelector("#lastUpdate").textContent = `Live · ${new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit", second: "2-digit" })}`;
-  if (currentPage === "bins") renderBins();
-  if (currentPage === "map") renderMap();
+    document.querySelector("#lastUpdate").textContent =
+        `Live · ${new Date().toLocaleTimeString([], {
+            hour: "numeric",
+            minute: "2-digit",
+            second: "2-digit"
+        })}`;
+
+    if (currentPage === "bins") renderBins();
+    if (currentPage === "map") renderMap();
+    if (currentPage === "history") renderHistory();
 }
 
 // ---------------------------------------------------------------------------
@@ -1213,6 +1231,47 @@ function locationErrorText(error) {
   if (error.code === 1) return "Location access is off. Allow location for this site in your browser settings, then try again.";
   if (error.code === 3) return "Finding your location took too long. Make sure location is on, then try again.";
   return "We couldn't find your location. Try again in a moment.";
+}
+
+// Bin Collection History
+function renderHistory() {
+    const historyRows = document.querySelector("#historyRows");
+
+    // Show the most recent 50 collection events.
+    const events = [...data.emptiedLog]
+        .sort((a, b) => b.at - a.at)
+        .slice(0, 50);
+
+    if (events.length === 0) {
+        historyRows.innerHTML = `
+      <tr>
+        <td colspan="3">
+          No collection history available yet.
+        </td>
+      </tr>
+    `;
+        return;
+    }
+
+    historyRows.innerHTML = events.map((event) => {
+        const worker = data.workers.find(
+            (w) => w.id === event.workerId
+        );
+
+        const workerName = worker
+            ? worker.name
+            : "Unknown worker";
+
+        const date = new Date(event.at).toLocaleString();
+
+        return `
+      <tr>
+        <td>Bin ${event.binId}</td>
+        <td>${escapeHtml(workerName)}</td>
+        <td>${escapeHtml(date)}</td>
+      </tr>
+    `;
+    }).join("");
 }
 
 // ---------------------------------------------------------------------------

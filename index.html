@@ -13,7 +13,7 @@
     />
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
-    <link rel="stylesheet" href="style.css?v=6" />
+    <link rel="stylesheet" href="style.css?v=7" />
   </head>
 
   <body>
@@ -51,6 +51,7 @@
         <nav class="nav">
           <button type="button" data-page="bins">Bins</button>
           <button type="button" data-page="map">Map</button>
+          <button type="button" data-page="history">History</button>
           <button type="button" data-page="settings" data-admin-only>Settings</button>
         </nav>
 
@@ -62,149 +63,176 @@
       </header>
 
       <main>
-        <!-- Bins page -->
-        <section id="page-bins" class="page">
-          <button type="button" class="next-bin" data-action="next-bin">
-            <span class="next-bin-arrow">&#10148;</span>
-            <span class="next-bin-text">
-              <strong>Go to nearest full bin</strong>
-              <small id="nextBinHint">Walking directions to the closest bin that needs emptying</small>
-            </span>
-          </button>
+          <!-- Bins page -->
+          <section id="page-bins" class="page">
+              <button type="button" class="next-bin" data-action="next-bin">
+                  <span class="next-bin-arrow">&#10148;</span>
+                  <span class="next-bin-text">
+                      <strong>Go to nearest full bin</strong>
+                      <small id="nextBinHint">Walking directions to the closest bin that needs emptying</small>
+                  </span>
+              </button>
 
-          <div class="summary">
-            <button type="button" class="summary-box is-full" data-filter="full">
-              <span class="summary-number" id="countFull">0</span>
-              <span>Need emptying</span>
-            </button>
-            <button type="button" class="summary-box is-almost" data-filter="almost">
-              <span class="summary-number" id="countAlmost">0</span>
-              <span>Almost full</span>
-            </button>
-            <button type="button" class="summary-box is-offline" data-filter="offline">
-              <span class="summary-number" id="countOffline">0</span>
-              <span>Sensor offline</span>
-            </button>
-            <button type="button" class="summary-box is-all" data-filter="all">
-              <span class="summary-number" id="countAll">0</span>
-              <span>All bins</span>
-            </button>
-          </div>
-
-          <div class="toolbar">
-            <input id="search" type="search" placeholder="Search by bin number or location" />
-            <div class="sort-toggle" role="group" aria-label="Sort bins">
-              <button type="button" data-sort="nearest">Nearest</button>
-              <button type="button" data-sort="fullest" class="active">Fullest</button>
-            </div>
-            <span id="resultCount" class="muted"></span>
-          </div>
-
-          <div id="binGrid" class="bin-grid"></div>
-        </section>
-
-        <!-- Map page -->
-        <section id="page-map" class="page page-map" hidden>
-          <div id="map"></div>
-
-          <!-- Filters, floating over the map. Swipe left (or use the tab) to hide. -->
-          <div class="map-drawer" id="mapDrawer">
-          <aside class="map-panel">
-            <div class="map-panel-top">
-              <input id="mapSearch" type="search" placeholder="Search bin number or place" />
-              <button type="button" id="filterToggle" class="button filter-toggle">Filters</button>
-            </div>
-            <button type="button" class="button primary full-width" data-action="next-bin">Go to nearest full bin</button>
-            <div id="mapResults" class="map-results"></div>
-
-            <div class="map-filters">
-              <p class="map-label">Compartment</p>
-              <div class="segmented">
-                <label><input type="radio" name="mapCompartment" value="any" checked /><span>All</span></label>
-                <label><input type="radio" name="mapCompartment" value="trash" /><span>Trash</span></label>
-                <label><input type="radio" name="mapCompartment" value="recycle" /><span>Recycling</span></label>
-                <label><input type="radio" name="mapCompartment" value="aluminum" /><span>Aluminum</span></label>
+              <div class="summary">
+                  <button type="button" class="summary-box is-full" data-filter="full">
+                      <span class="summary-number" id="countFull">0</span>
+                      <span>Need emptying</span>
+                  </button>
+                  <button type="button" class="summary-box is-almost" data-filter="almost">
+                      <span class="summary-number" id="countAlmost">0</span>
+                      <span>Almost full</span>
+                  </button>
+                  <button type="button" class="summary-box is-offline" data-filter="offline">
+                      <span class="summary-number" id="countOffline">0</span>
+                      <span>Sensor offline</span>
+                  </button>
+                  <button type="button" class="summary-box is-all" data-filter="all">
+                      <span class="summary-number" id="countAll">0</span>
+                      <span>All bins</span>
+                  </button>
               </div>
 
-              <p class="map-label">Status</p>
-              <div id="mapStatuses" class="status-toggles"></div>
-
-              <label class="switch-row" id="groupRow">
-                <span>Group nearby bins</span>
-                <input type="checkbox" id="groupNearby" class="switch" checked />
-              </label>
-            </div>
-          </aside>
-          <button type="button" class="drawer-tab" id="drawerTab" aria-label="Hide filters" aria-expanded="true">
-            <span class="drawer-chevron">&#8249;</span>
-            <span class="drawer-label">Filters</span>
-          </button>
-          </div>
-
-          <!-- Walking directions, shown instead of the filters while active -->
-          <aside id="directionsPanel" class="directions-panel" hidden></aside>
-
-          <div class="map-styles">
-            <button type="button" data-map-style="map" class="active">Map</button>
-            <button type="button" data-map-style="streets">Streets</button>
-            <button type="button" data-map-style="satellite">Satellite</button>
-          </div>
-
-          <div class="map-legend">
-            <div class="legend-pin">
-              <div class="bin-pin pin-almost"><span class="fill-ok" style="height: 35%"></span><span class="fill-almost" style="height: 65%"></span><span class="fill-full" style="height: 90%"></span></div>
-              <span>Bars: Trash · Recycling · Aluminum</span>
-            </div>
-            <div class="legend-colors">
-              <span><i class="fill-ok"></i>OK</span>
-              <span><i class="fill-almost"></i>Almost full</span>
-              <span><i class="fill-full"></i>Needs emptying</span>
-              <span><i class="fill-offline"></i>Offline</span>
-            </div>
-          </div>
-        </section>
-
-        <!-- Settings page (admins only) -->
-        <section id="page-settings" class="page" hidden>
-          <div class="card">
-            <div class="card-head">
-              <div>
-                <h2>Workers</h2>
-                <p class="muted">People who can sign in and empty bins.</p>
+              <div class="toolbar">
+                  <input id="search" type="search" placeholder="Search by bin number or location" />
+                  <div class="sort-toggle" role="group" aria-label="Sort bins">
+                      <button type="button" data-sort="nearest">Nearest</button>
+                      <button type="button" data-sort="fullest" class="active">Fullest</button>
+                  </div>
+                  <span id="resultCount" class="muted"></span>
               </div>
-              <button type="button" id="addWorker" class="button primary">+ Add worker</button>
-            </div>
-            <div class="table-wrap">
-              <table>
-                <thead>
-                  <tr><th>Name</th><th>Email</th><th>Role</th><th>Emptied today</th><th></th></tr>
-                </thead>
-                <tbody id="workerRows"></tbody>
-              </table>
-            </div>
-          </div>
 
-          <div class="card">
-            <h2>Alert levels</h2>
-            <p class="muted">When a compartment counts as almost full or needing to be emptied.</p>
-            <div class="setting">
-              <label for="fullAt">Needs emptying at</label>
-              <input type="range" id="fullAt" min="60" max="100" step="5" />
-              <output id="fullAtValue"></output>
-            </div>
-            <div class="setting">
-              <label for="almostAt">Almost full at</label>
-              <input type="range" id="almostAt" min="30" max="90" step="5" />
-              <output id="almostAtValue"></output>
-            </div>
-          </div>
+              <div id="binGrid" class="bin-grid"></div>
+          </section>
 
-          <div class="card">
-            <h2>Demo data</h2>
-            <p class="muted">Put the bins and workers back the way they started.</p>
-            <button type="button" id="resetData" class="button danger">Reset demo data</button>
-          </div>
-        </section>
+          <!-- Map page -->
+          <section id="page-map" class="page page-map" hidden>
+              <div id="map"></div>
+
+              <!-- Filters, floating over the map. Swipe left (or use the tab) to hide. -->
+              <div class="map-drawer" id="mapDrawer">
+                  <aside class="map-panel">
+                      <div class="map-panel-top">
+                          <input id="mapSearch" type="search" placeholder="Search bin number or place" />
+                          <button type="button" id="filterToggle" class="button filter-toggle">Filters</button>
+                      </div>
+                      <button type="button" class="button primary full-width" data-action="next-bin">Go to nearest full bin</button>
+                      <div id="mapResults" class="map-results"></div>
+
+                      <div class="map-filters">
+                          <p class="map-label">Compartment</p>
+                          <div class="segmented">
+                              <label><input type="radio" name="mapCompartment" value="any" checked /><span>All</span></label>
+                              <label><input type="radio" name="mapCompartment" value="recycling" /><span>Recycle</span></label>
+                              <label><input type="radio" name="mapCompartment" value="landfill" /><span>Landfill</span></label>
+                              <label><input type="radio" name="mapCompartment" value="compost" /><span>Compost</span></label>
+                          </div>
+
+                          <p class="map-label">Status</p>
+                          <div id="mapStatuses" class="status-toggles"></div>
+
+                          <label class="switch-row" id="groupRow">
+                              <span>Group nearby bins</span>
+                              <input type="checkbox" id="groupNearby" class="switch" checked />
+                          </label>
+                      </div>
+                  </aside>
+                  <button type="button" class="drawer-tab" id="drawerTab" aria-label="Hide filters" aria-expanded="true">
+                      <span class="drawer-chevron">&#8249;</span>
+                      <span class="drawer-label">Filters</span>
+                  </button>
+              </div>
+
+              <!-- Walking directions, shown instead of the filters while active -->
+              <aside id="directionsPanel" class="directions-panel" hidden></aside>
+
+              <div class="map-styles">
+                  <button type="button" data-map-style="map" class="active">Map</button>
+                  <button type="button" data-map-style="streets">Streets</button>
+                  <button type="button" data-map-style="satellite">Satellite</button>
+              </div>
+
+              <div class="map-legend">
+                  <div class="legend-pin">
+                      <div class="bin-pin pin-almost"><span class="fill-ok" style="height: 35%"></span><span class="fill-almost" style="height: 65%"></span><span class="fill-full" style="height: 90%"></span></div>
+                      <span>Bars: Recycle · Landfill · Compost</span>
+                  </div>
+                  <div class="legend-colors">
+                      <span><i class="fill-ok"></i>OK</span>
+                      <span><i class="fill-almost"></i>Almost full</span>
+                      <span><i class="fill-full"></i>Needs emptying</span>
+                      <span><i class="fill-offline"></i>Offline</span>
+                  </div>
+              </div>
+          </section>
+
+          <!-- Collection History page -->
+          <section id="page-history" class="page" hidden>
+              <div class="card">
+                  <div class="card-head">
+                      <div>
+                          <h2>Collection History</h2>
+                          <p class="muted">
+                              View recently emptied campus bins.
+                          </p>
+                      </div>
+                  </div>
+
+                  <div class="table-wrap">
+                      <table>
+                          <thead>
+                              <tr>
+                                  <th>Bin</th>
+                                  <th>Worker</th>
+                                  <th>Date and Time</th>
+                              </tr>
+                          </thead>
+                          <tbody id="historyRows"></tbody>
+                      </table>
+                  </div>
+              </div>
+          </section>
+
+          <!-- Settings page (admins only) -->
+          <section id="page-settings" class="page" hidden>
+              <div class="card">
+                  <div class="card-head">
+                      <div>
+                          <h2>Workers</h2>
+                          <p class="muted">People who can sign in and empty bins.</p>
+                      </div>
+                      <button type="button" id="addWorker" class="button primary">+ Add worker</button>
+                  </div>
+                  <div class="table-wrap">
+                      <table>
+                          <thead>
+                              <tr><th>Name</th><th>Email</th><th>Role</th><th>Emptied today</th><th></th></tr>
+                          </thead>
+                          <tbody id="workerRows"></tbody>
+                      </table>
+                  </div>
+              </div>
+
+              <div class="card">
+                  <h2>Alert levels</h2>
+                  <p class="muted">When a compartment counts as almost full or needing to be emptied.</p>
+                  <div class="setting">
+                      <label for="fullAt">Needs emptying at</label>
+                      <input type="range" id="fullAt" min="60" max="100" step="5" />
+                      <output id="fullAtValue"></output>
+                  </div>
+                  <div class="setting">
+                      <label for="almostAt">Almost full at</label>
+                      <input type="range" id="almostAt" min="30" max="90" step="5" />
+                      <output id="almostAtValue"></output>
+                  </div>
+              </div>
+
+              <div class="card">
+                  <h2>Demo data</h2>
+                  <p class="muted">Put the bins and workers back the way they started.</p>
+                  <button type="button" id="resetData" class="button danger">Reset demo data</button>
+              </div>
+          </section>
       </main>
     </div>
 
@@ -234,6 +262,6 @@
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
     <script src="bins.js"></script>
-    <script src="app.js?v=6"></script>
+    <script src="app.js?v=7"></script>
   </body>
 </html>
