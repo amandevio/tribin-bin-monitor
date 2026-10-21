@@ -12,6 +12,18 @@ const COMPARTMENTS = [
 ];
 
 const STATUS_TEXT = { full: "Needs emptying", almost: "Almost full", ok: "OK", offline: "Sensor offline" };
+
+// The real sensor (XIAO ESP32-C3 + A02YYUW) publishes its distance reading to
+// this MQTT topic on a free public broker. It drives one compartment of Bin 3
+// ("Test Bin"); every other bin is simulated.
+const LIVE = {
+  binId: 3,
+  key: "landfill",
+  label: "Landfill",
+  topic: "tribin/amandevio/bin/3",
+  broker: "wss://broker.hivemq.com:8884/mqtt",
+};
+const LIVE_TIMEOUT_MS = 30000; // no reading for this long = sensor offline
 const MAP_STATUSES = ["full", "almost", "ok", "offline"];
 
 // Bin locations come from bins.js (the project spreadsheet).
@@ -25,6 +37,8 @@ let binSort = "fullest"; // "fullest" or "nearest"
 let shownBinIds = "";
 let map = null;
 const mapMarkers = new Map();
+let liveReading = null; // { distanceCm, at } from the real sensor
+let liveRelayConnected = false;
 
 // ---------------------------------------------------------------------------
 // Saved data (kept in the browser so it survives a refresh)
@@ -45,7 +59,7 @@ function defaultData() {
   seedSensorStatus(levels);
 
   return {
-    settings: { fullAt: 80, almostAt: 50 },
+    settings: { fullAt: 80, almostAt: 50, liveDepthCm: 60 },
     workers: [
       { id: 1, name: "Jordan Reyes", email: "jordan.reyes@csus.edu", role: "admin" },
       { id: 2, name: "Maria Lopez", email: "maria.lopez@csus.edu", role: "worker" },
@@ -77,6 +91,7 @@ function loadData() {
           delete level.aluminum;
         }
       });
+      saved.settings.liveDepthCm ??= 60;
       return saved;
     }
   } catch {
@@ -127,6 +142,10 @@ function fillSpeed(binId) {
 function readSensors() {
   allBins.forEach((bin) => {
     const level = data.levels[bin.id];
+    if (bin.id === LIVE.binId) {
+      applyLiveReading();
+      return;
+    }
 
     // In the demo, sensors occasionally drop out and come back later.
     // An offline sensor sends nothing, so its bin keeps its last reading.
@@ -157,6 +176,84 @@ function distanceToPercent(distanceCm, emptyDepthCm = 90) {
 }
 
 // ---------------------------------------------------------------------------
+// Live sensor
+// ---------------------------------------------------------------------------
+
+function liveIsFresh() {
+  return Boolean(liveReading && liveReading.at && Date.now() - liveReading.at < LIVE_TIMEOUT_MS);
+}
+
+// Copy the latest real reading into the live bin.
+function applyLiveReading() {
+  const level = data.levels[LIVE.binId];
+  if (!level) return;
+  const fresh = liveIsFresh();
+  level.online = fresh;
+  if (!liveReading) return;
+  if (fresh) {
+    level.lastReading = liveReading.at;
+    // The other two compartments have no sensor yet, so start them empty.
+    if (!level.liveStarted) {
+      COMPARTMENTS.forEach(({ key }) => {
+        if (key !== LIVE.key) level[key] = 0;
+      });
+      level.liveStarted = true;
+    }
+  }
+  level[LIVE.key] = distanceToPercent(liveReading.distanceCm, data.settings.liveDepthCm);
+}
+
+function startLiveSensor() {
+  if (typeof mqtt === "undefined") return;
+  const client = mqtt.connect(LIVE.broker, {
+    clientId: `tribin-dashboard-${Math.random().toString(16).slice(2, 10)}`,
+    reconnectPeriod: 5000,
+    connectTimeout: 10000,
+  });
+  client.on("connect", () => {
+    liveRelayConnected = true;
+    client.subscribe(LIVE.topic);
+    renderLiveStatus();
+  });
+  client.on("close", () => {
+    liveRelayConnected = false;
+    renderLiveStatus();
+  });
+  client.on("message", (topic, payload, packet) => {
+    try {
+      const message = JSON.parse(payload.toString());
+      if (typeof message.distance_cm !== "number") return;
+      // A retained message is the last reading the broker kept, which may be
+      // old, so it only counts as live once a new one arrives.
+      liveReading = { distanceCm: message.distance_cm, at: packet.retain ? 0 : Date.now() };
+      applyLiveReading();
+      if (currentUser()) render();
+    } catch {
+      // Ignore anything that isn't a sensor reading.
+    }
+  });
+}
+
+function renderLiveStatus() {
+  const el = document.querySelector("#liveStatus");
+  if (!el) return;
+  if (liveIsFresh()) {
+    const percent = distanceToPercent(liveReading.distanceCm, data.settings.liveDepthCm);
+    el.className = "live-status is-on";
+    el.innerHTML = `<b>Connected</b> · ${liveReading.distanceCm.toFixed(1)} cm to the trash · <b>${percent}% full</b>`;
+  } else if (!liveRelayConnected) {
+    el.className = "live-status";
+    el.textContent = "Connecting to the sensor relay…";
+  } else if (liveReading) {
+    el.className = "live-status is-off";
+    el.textContent = `Sensor offline · last reading ${liveReading.distanceCm.toFixed(1)} cm. Check that it's powered and on Wi-Fi.`;
+  } else {
+    el.className = "live-status";
+    el.textContent = "Waiting for the sensor. Make sure it's powered and connected to Wi-Fi.";
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
@@ -181,6 +278,7 @@ function binStatus(binId) {
 }
 
 function offlineText(binId) {
+  if (binId === LIVE.binId && !liveIsFresh()) return "Live sensor not connected";
   return `No signal · last reading ${timeAgo(data.levels[binId].lastReading)}`;
 }
 
@@ -479,6 +577,7 @@ function render() {
     if (currentPage === "bins") renderBins();
     if (currentPage === "map") renderMap();
     if (currentPage === "history") renderHistory();
+    if (currentPage === "settings") renderLiveStatus();
 }
 
 // ---------------------------------------------------------------------------
@@ -512,7 +611,11 @@ function renderBins() {
   const visible = allBins
     .filter((bin) => binFilter === "all" || binStatus(bin.id) === binFilter)
     .filter((bin) => `bin ${bin.id} ${bin.location}`.toLowerCase().includes(searchText))
-    .sort((a, b) => (binSort === "nearest" ? metersToBin(a) - metersToBin(b) : fullest(b.id) - fullest(a.id)));
+    .sort(
+      (a, b) =>
+        (b.id === LIVE.binId) - (a.id === LIVE.binId) ||
+        (binSort === "nearest" ? metersToBin(a) - metersToBin(b) : fullest(b.id) - fullest(a.id))
+    );
 
   document.querySelector("#resultCount").textContent = `${visible.length} bin${visible.length === 1 ? "" : "s"}`;
 
@@ -554,7 +657,7 @@ function cardHtml(bin) {
   return `
     <article class="bin-card" data-id="${bin.id}">
       <div class="card-top">
-        <strong>Bin ${bin.id}</strong>
+        <strong>Bin ${bin.id}${bin.id === LIVE.binId ? ' <span class="live-tag">LIVE</span>' : ""}</strong>
         <span class="badge"></span>
       </div>
       <p class="card-location">${escapeHtml(bin.location)}</p>
@@ -768,8 +871,9 @@ function popupHtml(bin) {
 
   return `
     <div class="popup">
-      <strong>Bin ${bin.id}</strong>
+      <strong>Bin ${bin.id}${bin.id === LIVE.binId ? ' <span class="live-tag">LIVE</span>' : ""}</strong>
       <p>${escapeHtml(bin.location)}</p>
+      ${bin.id === LIVE.binId ? `<p class="popup-live">${LIVE.label} reading comes from the real sensor.</p>` : ""}
       ${rows}
       ${offline ? `<p class="popup-offline">Sensor offline. ${offlineText(bin.id)}, so these levels may be out of date.</p>` : ""}
       <p class="popup-emptied">${emptiedText(bin.id)}</p>
@@ -1299,6 +1403,9 @@ function renderSettings() {
     )
     .join("");
 
+  document.querySelector("#liveDepth").value = data.settings.liveDepthCm;
+  renderLiveStatus();
+
   const { fullAt, almostAt } = data.settings;
   document.querySelector("#fullAt").value = fullAt;
   document.querySelector("#fullAtValue").textContent = `${fullAt}%`;
@@ -1334,6 +1441,29 @@ document.querySelector("#workerRows").addEventListener("click", (event) => {
     shownBinIds = "";
     saveData();
   });
+});
+
+document.querySelector("#liveDepth").addEventListener("change", (event) => {
+  const value = Math.round(Number(event.target.value));
+  data.settings.liveDepthCm = Math.min(400, Math.max(10, value || 60));
+  event.target.value = data.settings.liveDepthCm;
+  applyLiveReading();
+  saveData();
+  renderLiveStatus();
+});
+
+// Point the sensor at the empty container and click this to set its depth.
+document.querySelector("#liveCalibrate").addEventListener("click", () => {
+  if (!liveIsFresh()) {
+    showToast("No live reading yet. Make sure the sensor is on Wi-Fi.");
+    return;
+  }
+  data.settings.liveDepthCm = Math.max(10, Math.round(liveReading.distanceCm));
+  document.querySelector("#liveDepth").value = data.settings.liveDepthCm;
+  applyLiveReading();
+  saveData();
+  renderLiveStatus();
+  showToast(`Empty depth set to ${data.settings.liveDepthCm} cm.`);
 });
 
 document.querySelector("#resetData").addEventListener("click", () => {
@@ -1411,6 +1541,8 @@ if (currentUser()) {
 } else {
   showLogin();
 }
+
+startLiveSensor();
 
 setInterval(() => {
   readSensors();

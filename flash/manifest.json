@@ -1,11 +1,11 @@
 {
-  "name": "Tribin Sensor Test",
-  "version": "1.0",
+  "name": "Tribin Live Sensor",
+  "version": "1.1",
   "new_install_prompt_erase": true,
   "builds": [
     {
       "chipFamily": "ESP32-C3",
-      "parts": [{ "path": "sensor_test.merged.bin", "offset": 0 }]
+      "parts": [{ "path": "tribin_sensor.merged.bin", "offset": 0 }]
     }
   ]
 }

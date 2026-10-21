@@ -31,6 +31,11 @@ connection is needed for the map.
   location permission the first time. Routes come from the free OpenStreetMap
   routing service at routing.openstreetmap.de.)
 - **History**: a log of recently emptied bins, with who emptied them and when.
+- **Live sensor**: Bin 3 (Test Bin) shows a real XIAO ESP32-C3 + A02YYUW
+  sensor. The board publishes its distance reading over MQTT
+  (broker.hivemq.com, topic `tribin/amandevio/bin/3`) and the dashboard turns
+  it into the Landfill fill level. Flash the board and set up its Wi-Fi from
+  `flash/` in Chrome or Edge; calibrate the empty depth in Settings.
 - **Settings** (admins only): add, edit, and remove workers, and change when a
   bin counts as full.
 

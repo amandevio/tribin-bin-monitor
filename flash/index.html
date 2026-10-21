@@ -164,7 +164,7 @@
   <body>
     <header>
       <h1>Flash the Tribin sensor</h1>
-      <p>Put the sensor test code on your XIAO ESP32-C3 from this browser. No software to install.</p>
+      <p>Put the live sensor code on your XIAO ESP32-C3 from this browser, connect it to Wi-Fi, and watch it on the dashboard.</p>
     </header>
 
     <main>
@@ -188,7 +188,7 @@
         <ol>
           <li>Plug the XIAO into this computer with a data USB-C cable.</li>
           <li>Click <b>Connect</b> below, pick <b>"USB JTAG/serial debug unit"</b> from the list, and click <b>Connect</b>.</li>
-          <li>Click <b>Install Tribin Sensor Test</b>, then <b>Install</b>. It takes about a minute.</li>
+          <li>Click <b>Install Tribin Live Sensor</b>, then <b>Install</b>. It takes about a minute.</li>
         </ol>
         <div class="install">
           <esp-web-install-button manifest="manifest.json">
@@ -208,19 +208,30 @@
       </section>
 
       <section class="card">
-        <h2><span class="step">3</span>See the readings</h2>
+        <h2><span class="step">3</span>Connect it to Wi-Fi</h2>
         <ol>
-          <li>Click <b>Connect</b> again and pick the XIAO.</li>
-          <li>Choose <b>Logs &amp; Console</b>.</li>
-          <li>You should see lines like <code>Distance: 42.3 cm   Fill: 29%</code> a few times a second. Move your hand toward the sensor and watch them change.</li>
+          <li>Right after installing, the page asks to <b>connect to Wi-Fi</b>. If it doesn't, click <b>Connect</b> again, pick the XIAO, and choose <b>Change Wi-Fi</b>.</li>
+          <li>Pick your network and type the password. A <b>phone hotspot</b> works best; campus Wi-Fi usually blocks devices like this.</li>
+          <li>The XIAO only works on <b>2.4 GHz</b> Wi-Fi. On an iPhone hotspot, turn on <b>Maximize Compatibility</b>.</li>
+          <li>The board saves the Wi-Fi, so next time just plug it in.</li>
+        </ol>
+        <p class="note">Your Wi-Fi password is sent straight from this page to the board over USB and saved only on the board.</p>
+      </section>
+
+      <section class="card">
+        <h2><span class="step">4</span>Watch it on the dashboard</h2>
+        <ol>
+          <li>Open the <a href="../">dashboard</a>, sign in, and click <b>All bins</b>. <b>Bin 3 (Test Bin)</b> is first, with a green <b>LIVE</b> tag.</li>
+          <li>Its <b>Landfill</b> bar follows the real sensor, updating every few seconds.</li>
+          <li>Sign in as the admin, open <b>Settings → Live sensor</b>, point the sensor at your empty container, and click <b>Use current reading as empty</b>. Now 0% is empty and the bar fills as you add things.</li>
         </ol>
         <p class="note">
-          No readings? Check the wiring. If the colors on your cable are different, try the yellow wire in <b>D7</b> instead of the white one.
-          The sensor can't see anything closer than 3 cm.
+          Not showing up? Click <b>Connect</b> here, pick the XIAO, and open <b>Logs &amp; Console</b>. Each line shows the distance, the Wi-Fi address, and
+          whether it's sending to the dashboard.
         </p>
       </section>
 
-      <p>Code: <a href="sensor_test.ino">sensor_test.ino</a> · <a href="../">Back to the dashboard</a></p>
+      <p>Code: <a href="tribin_sensor.ino">tribin_sensor.ino</a> · <a href="../">Back to the dashboard</a></p>
     </main>
   </body>
 </html>

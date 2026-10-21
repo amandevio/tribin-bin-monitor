@@ -13,7 +13,7 @@
     />
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
-    <link rel="stylesheet" href="style.css?v=7" />
+    <link rel="stylesheet" href="style.css?v=8" />
   </head>
 
   <body>
@@ -228,6 +228,18 @@
               </div>
 
               <div class="card">
+                  <h2>Live sensor</h2>
+                  <p class="muted">The real sensor drives the Landfill compartment of <b>Bin 3 (Test Bin)</b>.</p>
+                  <p id="liveStatus" class="live-status">Connecting to the sensor relay…</p>
+                  <div class="setting">
+                      <label for="liveDepth">Empty container depth</label>
+                      <input type="number" id="liveDepth" min="10" max="400" step="1" />
+                      <output>cm</output>
+                  </div>
+                  <button type="button" id="liveCalibrate" class="button">Use current reading as empty</button>
+              </div>
+
+              <div class="card">
                   <h2>Demo data</h2>
                   <p class="muted">Put the bins and workers back the way they started.</p>
                   <button type="button" id="resetData" class="button danger">Reset demo data</button>
@@ -261,7 +273,8 @@
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+    <script src="https://unpkg.com/mqtt@5.16.1/dist/mqtt.min.js"></script>
     <script src="bins.js"></script>
-    <script src="app.js?v=7"></script>
+    <script src="app.js?v=8"></script>
   </body>
 </html>
