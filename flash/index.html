@@ -1,0 +1,226 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Tribin · Flash Sensor</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@100..125,600..800&family=Instrument+Sans:wght@400..700&display=swap"
+    />
+    <script type="module" src="https://unpkg.com/esp-web-tools@10/dist/web/install-button.js?module"></script>
+    <style>
+      :root {
+        --green: #043927;
+        --gold: #c4b581;
+        --bg: #f3f1ea;
+        --card: #fffdf8;
+        --text: #16241c;
+        --muted: #6b766f;
+        --line: #e2ddd0;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        color: var(--text);
+        background: var(--bg);
+        font-family: "Instrument Sans", "Segoe UI", sans-serif;
+        line-height: 1.5;
+      }
+
+      header {
+        padding: 18px 24px;
+        color: white;
+        background: var(--green);
+      }
+
+      header h1 {
+        margin: 0;
+        font-family: "Archivo", sans-serif;
+        font-size: 22px;
+        font-stretch: 115%;
+      }
+
+      header p {
+        margin: 2px 0 0;
+        color: rgba(255, 255, 255, 0.75);
+        font-size: 14px;
+      }
+
+      main {
+        max-width: 760px;
+        margin: 0 auto;
+        padding: 24px 16px 48px;
+      }
+
+      .card {
+        margin-bottom: 18px;
+        padding: 20px 22px;
+        background: var(--card);
+        border: 1px solid var(--line);
+        border-radius: 14px;
+      }
+
+      h2 {
+        margin: 0 0 10px;
+        font-family: "Archivo", sans-serif;
+        font-size: 18px;
+        font-stretch: 110%;
+      }
+
+      .step {
+        display: inline-grid;
+        place-items: center;
+        width: 26px;
+        height: 26px;
+        margin-right: 8px;
+        color: var(--green);
+        background: var(--gold);
+        border-radius: 50%;
+        font-size: 14px;
+        font-weight: 800;
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 15px;
+      }
+
+      td,
+      th {
+        padding: 8px 10px;
+        text-align: left;
+        border-bottom: 1px solid var(--line);
+      }
+
+      th {
+        color: var(--muted);
+        font-size: 13px;
+      }
+
+      .dot {
+        display: inline-block;
+        width: 12px;
+        height: 12px;
+        margin-right: 6px;
+        vertical-align: -1px;
+        border: 1px solid #999;
+        border-radius: 50%;
+      }
+
+      ol {
+        margin: 0;
+        padding-left: 20px;
+      }
+
+      li {
+        margin-bottom: 6px;
+      }
+
+      .install {
+        margin: 14px 0 4px;
+      }
+
+      esp-web-install-button button[slot="activate"] {
+        padding: 12px 22px;
+        color: white;
+        background: var(--green);
+        border: 0;
+        border-radius: 10px;
+        font: inherit;
+        font-size: 16px;
+        font-weight: 700;
+        cursor: pointer;
+      }
+
+      .note {
+        padding: 10px 12px;
+        color: #6a4b00;
+        background: #fbefd4;
+        border-radius: 10px;
+        font-size: 14px;
+      }
+
+      code {
+        padding: 2px 6px;
+        background: #efebe0;
+        border-radius: 5px;
+      }
+
+      a {
+        color: var(--green);
+        font-weight: 700;
+      }
+    </style>
+  </head>
+
+  <body>
+    <header>
+      <h1>Flash the Tribin sensor</h1>
+      <p>Put the sensor test code on your XIAO ESP32-C3 from this browser. No software to install.</p>
+    </header>
+
+    <main>
+      <section class="card">
+        <h2><span class="step">1</span>Wire the sensor (USB unplugged)</h2>
+        <table>
+          <thead>
+            <tr><th>A02YYUW sensor wire</th><th>XIAO pin</th></tr>
+          </thead>
+          <tbody>
+            <tr><td><span class="dot" style="background: #d0402f"></span>Red (power)</td><td><b>3V3</b></td></tr>
+            <tr><td><span class="dot" style="background: #111"></span>Black (ground)</td><td><b>GND</b></td></tr>
+            <tr><td><span class="dot" style="background: #fff"></span>White (TX, data out)</td><td><b>D7</b></td></tr>
+            <tr><td><span class="dot" style="background: #e7c22e"></span>Yellow (RX)</td><td>Not connected</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section class="card">
+        <h2><span class="step">2</span>Install the code</h2>
+        <ol>
+          <li>Plug the XIAO into this computer with a data USB-C cable.</li>
+          <li>Click <b>Connect</b> below, pick <b>"USB JTAG/serial debug unit"</b> from the list, and click <b>Connect</b>.</li>
+          <li>Click <b>Install Tribin Sensor Test</b>, then <b>Install</b>. It takes about a minute.</li>
+        </ol>
+        <div class="install">
+          <esp-web-install-button manifest="manifest.json">
+            <button slot="activate">Connect</button>
+            <span slot="unsupported">
+              <p class="note">This browser can't talk to USB devices. Open this page in <b>Chrome</b> or <b>Edge</b> on a computer.</p>
+            </span>
+            <span slot="not-allowed">
+              <p class="note">This page needs a secure connection (https) to use USB.</p>
+            </span>
+          </esp-web-install-button>
+        </div>
+        <p class="note">
+          If the XIAO doesn't appear in the list: unplug it, hold the <b>B</b> button, plug it back in, let go, and try again.
+          After installing in this mode, press the <b>R</b> button once to start the code.
+        </p>
+      </section>
+
+      <section class="card">
+        <h2><span class="step">3</span>See the readings</h2>
+        <ol>
+          <li>Click <b>Connect</b> again and pick the XIAO.</li>
+          <li>Choose <b>Logs &amp; Console</b>.</li>
+          <li>You should see lines like <code>Distance: 42.3 cm   Fill: 29%</code> a few times a second. Move your hand toward the sensor and watch them change.</li>
+        </ol>
+        <p class="note">
+          No readings? Check the wiring. If the colors on your cable are different, try the yellow wire in <b>D7</b> instead of the white one.
+          The sensor can't see anything closer than 3 cm.
+        </p>
+      </section>
+
+      <p>Code: <a href="sensor_test.ino">sensor_test.ino</a> · <a href="../">Back to the dashboard</a></p>
+    </main>
+  </body>
+</html>
