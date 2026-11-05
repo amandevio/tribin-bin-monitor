@@ -11,20 +11,22 @@ connection is needed for the map.
 - **Go to nearest full bin**: one big button that finds the closest bin that
   needs emptying and starts walking directions to it. After you mark it
   emptied, it offers the next closest one.
+- **Simple layout**: four pages (Bins, Map, History, and Settings for
+  admins). On phones they sit as big tabs along the bottom of the screen.
 - **Sensor offline**: bins whose sensor has stopped reporting show in gray
-  with the time of their last reading. Find them with the **Sensor offline**
-  box on the Bins page or the status filter on the map.
-- **Bins**: every bin as a card with three fill bars. Click **Need emptying**,
-  **Almost full**, **Sensor offline**, or **All bins** at the top to filter, and sort by
-  **Nearest** (shows how far away each bin is) or **Fullest**. Workers press
-  **Mark emptied** after emptying a bin, and can tap **Undo** for a few
-  seconds if they tapped the wrong one.
+  with the time of their last reading. Admins find them with the **Offline**
+  tab on the Bins page or the status filter on the map.
+- **Bins**: every bin as a card with three fill bars. Tap **To empty**,
+  **Almost full**, or **All** at the top to switch lists. Fullest bins come
+  first, or nearest first once location is allowed. Workers press **Mark
+  emptied** after emptying a bin, and can tap **Undo** for a few seconds if
+  they tapped the wrong one. The pin button shows the bin on the map.
 - **Map**: every bin as a mini tri-bin marker with one bar per compartment
   (red = needs emptying, yellow = almost full, green = OK). Nearby bins are
-  grouped into circles whose ring shows how many are full. Filter by
-  compartment or status, search, and switch between Map, Streets, and
-  Satellite. Click a bin for details or to mark it emptied. Swipe the filter
-  panel to the left (or tap its tab) to hide it and see more of the map.
+  grouped into circles whose ring shows how many are full. Search, filter by
+  zone or status, and switch between Map and Satellite. Click a bin for
+  details or to mark it emptied. Swipe the filter panel to the left (or tap
+  its tab) to hide it and see more of the map.
 - **Directions**: tap **Directions** on any bin and the map shows the walking
   route from where you are, with turn-by-turn steps. Your location updates as
   you walk, and it tells you when you've arrived. (Your browser will ask for
@@ -41,7 +43,7 @@ connection is needed for the map.
   see their zone first, and **Go to nearest full bin** picks bins in their zone
   first. Every page has a zone filter, each card shows its zone, and History
   has a Zone column.
-- **Settings** (admins only): add, edit, and remove workers and choose their
+- **Settings** (admins only), in three tabs (Workers, Zones, Alerts & sensor): add, edit, and remove workers and choose their
   zone; create, rename, recolor, and delete zones and pick who works in each;
   see how many bins in each zone need emptying; and change when a bin counts
   as full. **Assign bins on map** opens an editor where you pick a zone and

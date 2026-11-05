@@ -13,7 +13,7 @@
     />
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
-    <link rel="stylesheet" href="style.css?v=9" />
+    <link rel="stylesheet" href="style.css?v=10" />
   </head>
 
   <body>
@@ -49,14 +49,13 @@
         </div>
 
         <nav class="nav">
-          <button type="button" data-page="bins">Bins</button>
-          <button type="button" data-page="map">Map</button>
-          <button type="button" data-page="history">History</button>
-          <button type="button" data-page="settings" data-admin-only>Settings</button>
+          <button type="button" data-page="bins"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></svg><span>Bins</span></button>
+          <button type="button" data-page="map"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg><span>Map</span></button>
+          <button type="button" data-page="history"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg><span>History</span></button>
+          <button type="button" data-page="settings" data-admin-only><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h9M17 6h3M4 12h3M11 12h9M4 18h11M19 18h1"/><circle cx="15" cy="6" r="2"/><circle cx="9" cy="12" r="2"/><circle cx="17" cy="18" r="2"/></svg><span>Settings</span></button>
         </nav>
 
         <div class="topbar-right">
-          <span class="live"><i></i><span id="lastUpdate">Live</span></span>
           <span id="userName" class="user-name"></span>
           <button type="button" id="signOut" class="button">Sign out</button>
         </div>
@@ -73,33 +72,24 @@
                   </span>
               </button>
 
-              <div class="summary">
+              <div class="summary" role="group" aria-label="Show bins">
                   <button type="button" class="summary-box is-full" data-filter="full">
-                      <span class="summary-number" id="countFull">0</span>
-                      <span>Need emptying</span>
+                      To empty <span class="summary-number" id="countFull">0</span>
                   </button>
                   <button type="button" class="summary-box is-almost" data-filter="almost">
-                      <span class="summary-number" id="countAlmost">0</span>
-                      <span>Almost full</span>
+                      Almost full <span class="summary-number" id="countAlmost">0</span>
                   </button>
-                  <button type="button" class="summary-box is-offline" data-filter="offline">
-                      <span class="summary-number" id="countOffline">0</span>
-                      <span>Sensor offline</span>
+                  <button type="button" class="summary-box is-offline" data-filter="offline" data-admin-only>
+                      Offline <span class="summary-number" id="countOffline">0</span>
                   </button>
                   <button type="button" class="summary-box is-all" data-filter="all">
-                      <span class="summary-number" id="countAll">0</span>
-                      <span>All bins</span>
+                      All <span class="summary-number" id="countAll">0</span>
                   </button>
               </div>
 
               <div class="toolbar">
-                  <input id="search" type="search" placeholder="Search by bin number or location" />
+                  <input id="search" type="search" placeholder="Search bins" />
                   <select id="zoneFilter" aria-label="Zone"></select>
-                  <div class="sort-toggle" role="group" aria-label="Sort bins">
-                      <button type="button" data-sort="nearest">Nearest</button>
-                      <button type="button" data-sort="fullest" class="active">Fullest</button>
-                  </div>
-                  <span id="resultCount" class="muted"></span>
               </div>
 
               <div id="binGrid" class="bin-grid"></div>
@@ -123,23 +113,8 @@
                           <p class="map-label">Zone</p>
                           <select id="mapZone" aria-label="Zone"></select>
 
-                          <p class="map-label">Compartment</p>
-                          <div class="segmented">
-                              <label><input type="radio" name="mapCompartment" value="any" checked /><span>All</span></label>
-                              <label><input type="radio" name="mapCompartment" value="recycling" /><span>Recycle</span></label>
-                              <label><input type="radio" name="mapCompartment" value="landfill" /><span>Landfill</span></label>
-                              <label><input type="radio" name="mapCompartment" value="compost" /><span>Compost</span></label>
-                          </div>
-
                           <p class="map-label">Status</p>
                           <div id="mapStatuses" class="status-toggles"></div>
-
-                          <label class="switch-row" id="groupRow">
-                              <span>Group nearby bins</span>
-                              <input type="checkbox" id="groupNearby" class="switch" checked />
-                          </label>
-
-                          <button type="button" id="mapEditZones" class="button full-width" data-admin-only>Edit zones on map</button>
                       </div>
                   </aside>
                   <button type="button" class="drawer-tab" id="drawerTab" aria-label="Hide filters" aria-expanded="true">
@@ -156,19 +131,18 @@
 
               <div class="map-styles">
                   <button type="button" data-map-style="map" class="active">Map</button>
-                  <button type="button" data-map-style="streets">Streets</button>
                   <button type="button" data-map-style="satellite">Satellite</button>
               </div>
 
               <div class="map-legend">
                   <div class="legend-pin">
                       <div class="bin-pin pin-almost"><span class="fill-ok" style="height: 35%"></span><span class="fill-almost" style="height: 65%"></span><span class="fill-full" style="height: 90%"></span></div>
-                      <span>Bars: Recycle · Landfill · Compost</span>
+                      <span>Recycle · Landfill · Compost</span>
                   </div>
                   <div class="legend-colors">
                       <span><i class="fill-ok"></i>OK</span>
-                      <span><i class="fill-almost"></i>Almost full</span>
-                      <span><i class="fill-full"></i>Needs emptying</span>
+                      <span><i class="fill-almost"></i>Almost</span>
+                      <span><i class="fill-full"></i>Full</span>
                       <span><i class="fill-offline"></i>Offline</span>
                   </div>
               </div>
@@ -204,7 +178,13 @@
 
           <!-- Settings page (admins only) -->
           <section id="page-settings" class="page" hidden>
-              <div class="card">
+              <div class="tabs settings-tabs" role="group" aria-label="Settings">
+                  <button type="button" data-settings-tab="workers" class="active">Workers</button>
+                  <button type="button" data-settings-tab="zones">Zones</button>
+                  <button type="button" data-settings-tab="system">Alerts &amp; sensor</button>
+              </div>
+
+              <div class="card" data-settings-panel="workers">
                   <div class="card-head">
                       <div>
                           <h2>Workers</h2>
@@ -222,7 +202,7 @@
                   </div>
               </div>
 
-              <div class="card">
+              <div class="card" data-settings-panel="zones" hidden>
                   <div class="card-head">
                       <div>
                           <h2>Zones</h2>
@@ -244,7 +224,7 @@
                   </div>
               </div>
 
-              <div class="card">
+              <div class="card" data-settings-panel="system" hidden>
                   <h2>Alert levels</h2>
                   <p class="muted">When a compartment counts as almost full or needing to be emptied.</p>
                   <div class="setting">
@@ -259,7 +239,7 @@
                   </div>
               </div>
 
-              <div class="card">
+              <div class="card" data-settings-panel="system" hidden>
                   <h2>Live sensor</h2>
                   <p class="muted">The real sensor drives the Landfill compartment of <b>Bin 3 (Test Bin)</b>.</p>
                   <p id="liveStatus" class="live-status">Connecting to the sensor relay…</p>
@@ -271,7 +251,7 @@
                   <button type="button" id="liveCalibrate" class="button">Use current reading as empty</button>
               </div>
 
-              <div class="card">
+              <div class="card" data-settings-panel="system" hidden>
                   <h2>Demo data</h2>
                   <p class="muted">Put the bins and workers back the way they started.</p>
                   <button type="button" id="resetData" class="button danger">Reset demo data</button>
@@ -327,6 +307,6 @@
     <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
     <script src="https://unpkg.com/mqtt@5.16.1/dist/mqtt.min.js"></script>
     <script src="bins.js"></script>
-    <script src="app.js?v=9"></script>
+    <script src="app.js?v=10"></script>
   </body>
 </html>

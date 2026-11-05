@@ -25,6 +25,7 @@ const LIVE = {
 };
 const LIVE_TIMEOUT_MS = 30000; // no reading for this long = sensor offline
 const MAP_STATUSES = ["full", "almost", "ok", "offline"];
+const SHORT_STATUS = { full: "To empty", almost: "Almost full", ok: "OK", offline: "Offline" };
 
 // Bin locations come from bins.js (the project spreadsheet).
 const allBins = Array.isArray(window.bins) ? window.bins : [];
@@ -638,7 +639,7 @@ function showPage(page) {
 
   // The map fills the whole screen under the top bar.
   document.body.classList.toggle("map-open", page === "map");
-  document.documentElement.style.setProperty("--topbar-height", `${document.querySelector(".topbar").offsetHeight}px`);
+  setBarHeights();
 
   if (page !== "map" && typeof stopDirections === "function") stopDirections();
   if (page !== "map") stopZoneEdit();
@@ -647,9 +648,15 @@ function showPage(page) {
   render();
 }
 
-window.addEventListener("resize", () => {
-  document.documentElement.style.setProperty("--topbar-height", `${document.querySelector(".topbar").offsetHeight}px`);
-});
+// The map fills the space between the top bar and (on phones) the bottom tabs.
+function setBarHeights() {
+  const root = document.documentElement.style;
+  root.setProperty("--topbar-height", `${document.querySelector(".topbar").offsetHeight}px`);
+  const nav = document.querySelector(".nav");
+  root.setProperty("--nav-height", `${getComputedStyle(nav).position === "fixed" ? nav.offsetHeight : 0}px`);
+}
+
+window.addEventListener("resize", setBarHeights);
 
 document.querySelector(".nav").addEventListener("click", (event) => {
   const button = event.target.closest("[data-page]");
@@ -657,13 +664,6 @@ document.querySelector(".nav").addEventListener("click", (event) => {
 });
 
 function render() {
-    document.querySelector("#lastUpdate").textContent =
-        `Live · ${new Date().toLocaleTimeString([], {
-            hour: "numeric",
-            minute: "2-digit",
-            second: "2-digit"
-        })}`;
-
     if (currentPage === "bins") renderBins();
     if (currentPage === "map") renderMap();
     if (currentPage === "history") renderHistory();
@@ -688,9 +688,6 @@ function renderBins() {
   document.querySelectorAll("[data-filter]").forEach((box) => {
     box.classList.toggle("selected", box.dataset.filter === binFilter);
   });
-  document.querySelectorAll("[data-sort]").forEach((button) => {
-    button.classList.toggle("active", button.dataset.sort === binSort);
-  });
 
   const next = nearestFullBin();
   document.querySelector("#nextBinHint").textContent = !next
@@ -707,8 +704,6 @@ function renderBins() {
         (b.id === LIVE.binId) - (a.id === LIVE.binId) ||
         (binSort === "nearest" ? metersToBin(a) - metersToBin(b) : fullest(b.id) - fullest(a.id))
     );
-
-  document.querySelector("#resultCount").textContent = `${visible.length} bin${visible.length === 1 ? "" : "s"}`;
 
   // Only rebuild the cards when a bin joins or leaves the list (or, when
   // sorted by distance, changes place), so cards don't jump around or
@@ -752,14 +747,11 @@ function cardHtml(bin) {
         <span class="badge"></span>
       </div>
       <p class="card-location">${escapeHtml(bin.location)}</p>
-      <p class="card-zone"></p>
-      <p class="card-distance"></p>
-      <p class="card-sensor"></p>
       <div class="bars">${bars}</div>
-      <p class="card-emptied"></p>
+      <p class="card-meta"></p>
       <div class="card-buttons">
-        <button type="button" class="button" data-action="map" data-id="${bin.id}">Show on map</button>
         <button type="button" class="button primary" data-action="empty" data-id="${bin.id}">Mark emptied</button>
+        <button type="button" class="button icon-button" data-action="map" data-id="${bin.id}" aria-label="Show on map" title="Show on map"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg></button>
       </div>
     </article>
   `;
@@ -782,18 +774,20 @@ function updateCard(card, bin) {
     fill.className = `bar-fill fill-${status === "offline" ? "offline" : statusOf(value)}`;
   });
 
-  card.querySelector(".card-emptied").textContent = emptiedText(bin.id);
-  const zoneHtml = zoneTag(binZone(bin.id));
-  const zoneEl = card.querySelector(".card-zone");
-  if (zoneEl.innerHTML !== zoneHtml) zoneEl.innerHTML = zoneHtml;
-  card.querySelector(".card-sensor").textContent = status === "offline" ? offlineText(bin.id) : "";
-  card.querySelector(".card-distance").textContent = myLocation ? `${formatDistance(metersToBin(bin))} away` : "";
+  // One short info line: zone (only when showing every zone), distance, last emptied.
+  const parts = [];
+  if (zoneFilter === "all") parts.push(zoneTag(binZone(bin.id)));
+  if (myLocation) parts.push(`<b>${formatDistance(metersToBin(bin))} away</b>`);
+  parts.push(escapeHtml(status === "offline" ? offlineText(bin.id) : emptiedText(bin.id)));
+  const meta = parts.map((part) => `<span>${part}</span>`).join("");
+  const metaEl = card.querySelector(".card-meta");
+  if (metaEl.innerHTML !== meta) metaEl.innerHTML = meta;
 }
 
 function emptiedText(binId) {
   const level = data.levels[binId];
   const worker = data.workers.find((w) => w.id === level.emptiedBy);
-  return `Last emptied ${timeAgo(level.emptiedAt)}${worker ? ` by ${worker.name.split(" ")[0]}` : ""}`;
+  return `Emptied ${timeAgo(level.emptiedAt)}${worker ? ` by ${worker.name.split(" ")[0]}` : ""}`;
 }
 
 document.querySelector(".summary").addEventListener("click", (event) => {
@@ -812,13 +806,6 @@ document.querySelector("#zoneFilter").addEventListener("change", (event) => {
 document.querySelector("#search").addEventListener("input", (event) => {
   searchText = event.target.value.trim().toLowerCase();
   renderBins();
-});
-
-document.querySelector(".sort-toggle").addEventListener("click", (event) => {
-  const button = event.target.closest("[data-sort]");
-  if (!button || button.dataset.sort === binSort) return;
-  if (button.dataset.sort === "nearest") sortByNearest();
-  else sortByFullest();
 });
 
 // Buttons on cards, in map popups, and in the directions panel.
@@ -1041,7 +1028,7 @@ function renderMap() {
     .map(
       (status) => `
         <button type="button" class="status-toggle st-${status}${mapFilters.statuses.has(status) ? " on" : ""}" data-status="${status}">
-          <i></i>${STATUS_TEXT[status]}<b>${counts[status]}</b>
+          <i></i>${SHORT_STATUS[status]}<b>${counts[status]}</b>
         </button>
       `
     )
@@ -1114,7 +1101,6 @@ document.querySelector("#mapStatuses").addEventListener("click", (event) => {
 
 function setGrouping(value) {
   groupNearby = value;
-  document.querySelector("#groupNearby").checked = value;
   map.removeLayer(markerGroup);
   markerGroup = makeMarkerGroup();
   shownMarkers = new Set();
@@ -1122,14 +1108,10 @@ function setGrouping(value) {
   renderMap();
 }
 
-document.querySelector("#groupNearby").addEventListener("change", (event) => setGrouping(event.target.checked));
-
 document.querySelector("#mapZone").addEventListener("change", (event) => {
   mapFilters.zone = event.target.value;
   renderMap();
 });
-
-document.querySelector("#mapEditZones").addEventListener("click", () => startZoneEdit());
 
 // ---------------------------------------------------------------------------
 // Editing zones on the map (admins): pick a zone, click bins to add them
@@ -1725,6 +1707,16 @@ document.querySelector("#zoneRows").addEventListener("click", (event) => {
 });
 
 document.querySelector("#addZone").addEventListener("click", () => openZoneDialog());
+
+function showSettingsTab(tab) {
+  document.querySelectorAll("[data-settings-tab]").forEach((button) => button.classList.toggle("active", button.dataset.settingsTab === tab));
+  document.querySelectorAll("[data-settings-panel]").forEach((panel) => (panel.hidden = panel.dataset.settingsPanel !== tab));
+}
+
+document.querySelector(".settings-tabs").addEventListener("click", (event) => {
+  const button = event.target.closest("[data-settings-tab]");
+  if (button) showSettingsTab(button.dataset.settingsTab);
+});
 document.querySelector("#editZonesMap").addEventListener("click", () => startZoneEdit());
 
 // ---------------------------------------------------------------------------
