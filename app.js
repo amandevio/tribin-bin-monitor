@@ -32,6 +32,7 @@ const allBins = Array.isArray(window.bins) ? window.bins : [];
 let data = loadData();
 let currentPage = "bins";
 let binFilter = "full";
+let zoneFilter = "all"; // a zone id, "all", or "none"
 let searchText = "";
 let binSort = "fullest"; // "fullest" or "nearest"
 let shownBinIds = "";
@@ -58,7 +59,7 @@ function defaultData() {
   });
   seedSensorStatus(levels);
 
-  return {
+  const d = {
     settings: { fullAt: 80, almostAt: 50, liveDepthCm: 60 },
     workers: [
       { id: 1, name: "Jordan Reyes", email: "jordan.reyes@csus.edu", role: "admin" },
@@ -72,6 +73,34 @@ function defaultData() {
     currentUserId: null,
     nextWorkerId: 6,
   };
+  seedZones(d);
+  return d;
+}
+
+// Starting zones: sports venues together, the rest of campus split into
+// north, central and south bands by latitude. Demo workers get one each.
+function seedZones(d) {
+  d.zones = [
+    { id: "z1", name: "North Campus", color: "#2f6fdb" },
+    { id: "z2", name: "Central Campus", color: "#1f8a5b" },
+    { id: "z3", name: "South Campus", color: "#c98309" },
+    { id: "z4", name: "Athletics & Fields", color: "#8c6bd1" },
+  ];
+  d.nextZoneId = 5;
+  d.binZones = {};
+  const athletic = /stadium|field|athletic|tennis|\bim\b|soccer|softball|practice|track/i;
+  const campus = allBins.filter((bin) => !athletic.test(bin.location)).sort((a, b) => b.latitude - a.latitude);
+  campus.forEach((bin, i) => {
+    const band = i / campus.length;
+    d.binZones[bin.id] = band < 1 / 3 ? "z1" : band < 2 / 3 ? "z2" : "z3";
+  });
+  allBins.forEach((bin) => {
+    if (athletic.test(bin.location)) d.binZones[bin.id] = "z4";
+  });
+  const starting = { 2: "z1", 3: "z2", 4: "z3", 5: "z4" };
+  d.workers.forEach((worker) => {
+    if (worker.zoneId === undefined) worker.zoneId = starting[worker.id] || null;
+  });
 }
 
 function loadData() {
@@ -92,6 +121,8 @@ function loadData() {
         }
       });
       saved.settings.liveDepthCm ??= 60;
+      // Data saved before zones existed gets the starting zones.
+      if (!saved.zones) seedZones(saved);
       return saved;
     }
   } catch {
@@ -282,6 +313,61 @@ function offlineText(binId) {
   return `No signal · last reading ${timeAgo(data.levels[binId].lastReading)}`;
 }
 
+// ---------------------------------------------------------------------------
+// Zones
+// ---------------------------------------------------------------------------
+
+const ZONE_COLORS = ["#2f6fdb", "#1f8a5b", "#c98309", "#8c6bd1", "#d0402f", "#0f9fb0", "#b5487a", "#5d6b62"];
+
+function zoneById(id) {
+  return data.zones.find((zone) => zone.id === id) || null;
+}
+
+function binZone(binId) {
+  return zoneById(data.binZones[binId]);
+}
+
+function myZoneId() {
+  const zoneId = currentUser()?.zoneId;
+  return zoneId && zoneById(zoneId) ? zoneId : null;
+}
+
+// filter is a zone id, "all", or "none" (bins without a zone)
+function inZone(binId, filter) {
+  if (filter === "all") return true;
+  if (filter === "none") return !binZone(binId);
+  return data.binZones[binId] === filter;
+}
+
+function zoneTag(zone) {
+  return zone
+    ? `<span class="zone-tag" style="--zone: ${zone.color}">${escapeHtml(zone.name)}</span>`
+    : '<span class="zone-tag zone-none">No zone</span>';
+}
+
+function zoneOptions() {
+  return (
+    '<option value="all">All zones</option>' +
+    data.zones
+      .map((zone) => `<option value="${zone.id}">${escapeHtml(zone.name)}${zone.id === myZoneId() ? " (my zone)" : ""}</option>`)
+      .join("") +
+    '<option value="none">No zone</option>'
+  );
+}
+
+// Fill the zone dropdowns on the Bins and Map pages.
+function renderZoneSelects() {
+  const valid = (value) => value === "all" || value === "none" || zoneById(value);
+  if (!valid(zoneFilter)) zoneFilter = "all";
+  if (!valid(mapFilters.zone)) mapFilters.zone = "all";
+  const binsSelect = document.querySelector("#zoneFilter");
+  binsSelect.innerHTML = zoneOptions();
+  binsSelect.value = zoneFilter;
+  const mapSelect = document.querySelector("#mapZone");
+  mapSelect.innerHTML = zoneOptions();
+  mapSelect.value = mapFilters.zone;
+}
+
 function currentUser() {
   return data.workers.find((worker) => worker.id === data.currentUserId) || null;
 }
@@ -413,12 +499,12 @@ function metersToBin(bin) {
   return myLocation ? distanceMeters(myLocation, [bin.latitude, bin.longitude]) : Infinity;
 }
 
+// Workers with a zone get the closest full bin in their own zone first.
 function nearestFullBin(skipBinId = null) {
-  return (
-    allBins
-      .filter((bin) => bin.id !== skipBinId && binStatus(bin.id) === "full")
-      .sort((a, b) => metersToBin(a) - metersToBin(b))[0] || null
-  );
+  const full = allBins.filter((bin) => bin.id !== skipBinId && binStatus(bin.id) === "full");
+  const zoneId = myZoneId();
+  const mine = zoneId ? full.filter((bin) => data.binZones[bin.id] === zoneId) : [];
+  return (mine.length ? mine : full).sort((a, b) => metersToBin(a) - metersToBin(b))[0] || null;
 }
 
 async function sortByNearest() {
@@ -490,7 +576,10 @@ function signIn(workerId) {
   const worker = data.workers.find((w) => w.id === workerId);
   data.currentUserId = worker.id;
   binFilter = worker.role === "admin" ? "all" : "full";
+  zoneFilter = myZoneId() || "all";
+  mapFilters.zone = zoneFilter;
   saveData();
+  renderZoneSelects();
 
   document.querySelector("#loginScreen").hidden = true;
   document.querySelector("#appScreen").hidden = false;
@@ -552,6 +641,7 @@ function showPage(page) {
   document.documentElement.style.setProperty("--topbar-height", `${document.querySelector(".topbar").offsetHeight}px`);
 
   if (page !== "map" && typeof stopDirections === "function") stopDirections();
+  if (page !== "map") stopZoneEdit();
   if (page === "map") setupMap();
   if (page === "settings") renderSettings();
   render();
@@ -585,15 +675,16 @@ function render() {
 // ---------------------------------------------------------------------------
 
 function renderBins() {
+  const zoneBins = allBins.filter((bin) => inZone(bin.id, zoneFilter));
   const counts = { full: 0, almost: 0, offline: 0 };
-  allBins.forEach((bin) => {
+  zoneBins.forEach((bin) => {
     const status = binStatus(bin.id);
     if (status in counts) counts[status]++;
   });
   document.querySelector("#countFull").textContent = counts.full;
   document.querySelector("#countAlmost").textContent = counts.almost;
   document.querySelector("#countOffline").textContent = counts.offline;
-  document.querySelector("#countAll").textContent = allBins.length;
+  document.querySelector("#countAll").textContent = zoneBins.length;
   document.querySelectorAll("[data-filter]").forEach((box) => {
     box.classList.toggle("selected", box.dataset.filter === binFilter);
   });
@@ -605,10 +696,10 @@ function renderBins() {
   document.querySelector("#nextBinHint").textContent = !next
     ? "No bins need emptying right now"
     : myLocation
-      ? `Bin ${next.id} · ${formatDistance(metersToBin(next))} away`
+      ? `Bin ${next.id} · ${formatDistance(metersToBin(next))} away${myZoneId() && data.binZones[next.id] === myZoneId() ? " · your zone" : ""}`
       : "Walking directions to the closest bin that needs emptying";
 
-  const visible = allBins
+  const visible = zoneBins
     .filter((bin) => binFilter === "all" || binStatus(bin.id) === binFilter)
     .filter((bin) => `bin ${bin.id} ${bin.location}`.toLowerCase().includes(searchText))
     .sort(
@@ -661,6 +752,7 @@ function cardHtml(bin) {
         <span class="badge"></span>
       </div>
       <p class="card-location">${escapeHtml(bin.location)}</p>
+      <p class="card-zone"></p>
       <p class="card-distance"></p>
       <p class="card-sensor"></p>
       <div class="bars">${bars}</div>
@@ -691,6 +783,9 @@ function updateCard(card, bin) {
   });
 
   card.querySelector(".card-emptied").textContent = emptiedText(bin.id);
+  const zoneHtml = zoneTag(binZone(bin.id));
+  const zoneEl = card.querySelector(".card-zone");
+  if (zoneEl.innerHTML !== zoneHtml) zoneEl.innerHTML = zoneHtml;
   card.querySelector(".card-sensor").textContent = status === "offline" ? offlineText(bin.id) : "";
   card.querySelector(".card-distance").textContent = myLocation ? `${formatDistance(metersToBin(bin))} away` : "";
 }
@@ -705,6 +800,12 @@ document.querySelector(".summary").addEventListener("click", (event) => {
   const box = event.target.closest("[data-filter]");
   if (!box) return;
   binFilter = box.dataset.filter;
+  renderBins();
+});
+
+document.querySelector("#zoneFilter").addEventListener("change", (event) => {
+  zoneFilter = event.target.value;
+  shownBinIds = "";
   renderBins();
 });
 
@@ -754,7 +855,7 @@ const MAP_STYLES = {
   satellite: { url: SATELLITE_TILES, className: "" },
 };
 
-const mapFilters = { search: "", compartment: "any", statuses: new Set(MAP_STATUSES) };
+const mapFilters = { search: "", compartment: "any", statuses: new Set(MAP_STATUSES), zone: "all" };
 const markerHtml = new Map();
 let markerGroup = null;
 let groupNearby = true;
@@ -786,6 +887,9 @@ function setupMap() {
   allBins.forEach((bin) => {
     const marker = L.marker([bin.latitude, bin.longitude], { title: `Bin ${bin.id}`, riseOnHover: true });
     marker.bindPopup(() => popupHtml(bin));
+    marker.on("click", () => {
+      if (zoneEdit.active) toggleBinZone(bin.id);
+    });
     mapMarkers.set(bin.id, marker);
   });
 
@@ -833,6 +937,11 @@ function markerIconHtml(bin) {
     const dim = mapFilters.compartment !== "any" && mapFilters.compartment !== key ? " dim" : "";
     return `<span class="fill-${offline ? "offline" : statusOf(value)}${dim}" style="height: ${Math.max(value, 8)}%"></span>`;
   }).join("");
+  if (zoneEdit.active) {
+    const zone = binZone(bin.id);
+    const extra = zone ? (zone.id === zoneEdit.zoneId ? " pin-zone pin-selected-zone" : " pin-zone") : " pin-zone pin-nozone";
+    return `<div class="bin-pin pin-${mapStatus(bin)}${extra}"${zone ? ` style="--zone: ${zone.color}"` : ""}>${bars}</div>`;
+  }
   return `<div class="bin-pin pin-${mapStatus(bin)}">${bars}</div>`;
 }
 
@@ -873,6 +982,7 @@ function popupHtml(bin) {
     <div class="popup">
       <strong>Bin ${bin.id}${bin.id === LIVE.binId ? ' <span class="live-tag">LIVE</span>' : ""}</strong>
       <p>${escapeHtml(bin.location)}</p>
+      <p class="popup-zone">${zoneTag(binZone(bin.id))}</p>
       ${bin.id === LIVE.binId ? `<p class="popup-live">${LIVE.label} reading comes from the real sensor.</p>` : ""}
       ${rows}
       ${offline ? `<p class="popup-offline">Sensor offline. ${offlineText(bin.id)}, so these levels may be out of date.</p>` : ""}
@@ -904,6 +1014,11 @@ function renderMap() {
     }
 
     if (mapFilters.search && !`bin ${bin.id} ${bin.location}`.toLowerCase().includes(mapFilters.search)) return;
+    if (zoneEdit.active) {
+      visible.push(bin);
+      return;
+    }
+    if (!inZone(bin.id, mapFilters.zone)) return;
     counts[status]++;
     if (mapFilters.statuses.has(status)) visible.push(bin);
   });
@@ -997,13 +1112,123 @@ document.querySelector("#mapStatuses").addEventListener("click", (event) => {
   renderMap();
 });
 
-document.querySelector("#groupNearby").addEventListener("change", (event) => {
-  groupNearby = event.target.checked;
+function setGrouping(value) {
+  groupNearby = value;
+  document.querySelector("#groupNearby").checked = value;
   map.removeLayer(markerGroup);
   markerGroup = makeMarkerGroup();
   shownMarkers = new Set();
   map.addLayer(markerGroup);
   renderMap();
+}
+
+document.querySelector("#groupNearby").addEventListener("change", (event) => setGrouping(event.target.checked));
+
+document.querySelector("#mapZone").addEventListener("change", (event) => {
+  mapFilters.zone = event.target.value;
+  renderMap();
+});
+
+document.querySelector("#mapEditZones").addEventListener("click", () => startZoneEdit());
+
+// ---------------------------------------------------------------------------
+// Editing zones on the map (admins): pick a zone, click bins to add them
+// ---------------------------------------------------------------------------
+
+const zoneEdit = { active: false, zoneId: null, groupedBefore: true };
+
+function startZoneEdit(zoneId = null) {
+  if (!isAdmin()) return;
+  if (currentPage !== "map") showPage("map");
+  if (!map) return;
+  stopDirections();
+  map.closePopup();
+  zoneEdit.active = true;
+  zoneEdit.zoneId = zoneById(zoneId) ? zoneId : data.zones[0]?.id || null;
+  zoneEdit.groupedBefore = groupNearby;
+  mapMarkers.forEach((marker) => marker.unbindPopup());
+  document.querySelector(".page-map").classList.add("zone-editing");
+  renderZoneEditPanel();
+  // Grouping off, so every bin can be clicked.
+  if (groupNearby) setGrouping(false);
+  else renderMap();
+}
+
+function stopZoneEdit() {
+  if (!zoneEdit.active) return;
+  zoneEdit.active = false;
+  mapMarkers.forEach((marker, id) => {
+    const bin = allBins.find((b) => b.id === id);
+    marker.bindPopup(() => popupHtml(bin));
+  });
+  document.querySelector(".page-map").classList.remove("zone-editing");
+  document.querySelector("#zoneEditPanel").hidden = true;
+  if (zoneEdit.groupedBefore && !groupNearby) setGrouping(true);
+  else renderMap();
+}
+
+function toggleBinZone(binId) {
+  const zone = zoneById(zoneEdit.zoneId);
+  if (!zone) {
+    showToast("Create a zone first.");
+    return;
+  }
+  if (data.binZones[binId] === zone.id) {
+    delete data.binZones[binId];
+    showToast(`Bin ${binId} taken out of ${zone.name}.`);
+  } else {
+    data.binZones[binId] = zone.id;
+    showToast(`Bin ${binId} added to ${zone.name}.`);
+  }
+  saveData();
+  shownBinIds = "";
+  renderMap();
+  renderZoneEditPanel();
+}
+
+function renderZoneEditPanel() {
+  const panel = document.querySelector("#zoneEditPanel");
+  if (!zoneEdit.active) {
+    panel.hidden = true;
+    return;
+  }
+  const count = (zoneId) => allBins.filter((bin) => data.binZones[bin.id] === zoneId).length;
+  const unassigned = allBins.filter((bin) => !binZone(bin.id)).length;
+  panel.hidden = false;
+  panel.innerHTML = `
+    <div class="directions-head">
+      <div>
+        <p class="map-label">Editing zones</p>
+        <strong>Click bins to assign them</strong>
+      </div>
+      <button type="button" class="button primary" data-zone-done>Done</button>
+    </div>
+    <p class="zone-hint">Pick a zone, then click a bin on the map to add it. Click it again to take it out.</p>
+    <div class="zone-chips">
+      ${data.zones
+        .map(
+          (zone) => `
+            <button type="button" class="zone-chip${zone.id === zoneEdit.zoneId ? " active" : ""}" data-zone-pick="${zone.id}" style="--zone: ${zone.color}">
+              <i></i>${escapeHtml(zone.name)}<b>${count(zone.id)}</b>
+            </button>
+          `
+        )
+        .join("")}
+    </div>
+    <button type="button" class="button full-width" data-zone-new>+ New zone</button>
+    <p class="zone-hint">${unassigned ? `${unassigned} bin${unassigned === 1 ? " has" : "s have"} no zone yet (gray dashed outline).` : "Every bin is in a zone."}</p>
+  `;
+}
+
+document.querySelector("#zoneEditPanel").addEventListener("click", (event) => {
+  if (event.target.closest("[data-zone-done]")) stopZoneEdit();
+  if (event.target.closest("[data-zone-new]")) openZoneDialog();
+  const pick = event.target.closest("[data-zone-pick]");
+  if (pick) {
+    zoneEdit.zoneId = pick.dataset.zonePick;
+    renderZoneEditPanel();
+    renderMap();
+  }
 });
 
 document.querySelector(".map-styles").addEventListener("click", (event) => {
@@ -1349,7 +1574,7 @@ function renderHistory() {
     if (events.length === 0) {
         historyRows.innerHTML = `
       <tr>
-        <td colspan="3">
+        <td colspan="4">
           No collection history available yet.
         </td>
       </tr>
@@ -1371,6 +1596,7 @@ function renderHistory() {
         return `
       <tr>
         <td>Bin ${event.binId}</td>
+        <td>${zoneTag(binZone(event.binId))}</td>
         <td>${escapeHtml(workerName)}</td>
         <td>${escapeHtml(date)}</td>
       </tr>
@@ -1393,6 +1619,7 @@ function renderSettings() {
           <td><strong>${escapeHtml(worker.name)}</strong>${worker.id === data.currentUserId ? ' <span class="you">You</span>' : ""}</td>
           <td class="muted">${escapeHtml(worker.email)}</td>
           <td><span class="role role-${worker.role}">${worker.role === "admin" ? "Admin" : "Worker"}</span></td>
+          <td>${worker.zoneId && zoneById(worker.zoneId) ? zoneTag(zoneById(worker.zoneId)) : '<span class="muted">All campus</span>'}</td>
           <td>${emptiedToday(worker.id)}</td>
           <td class="row-buttons">
             <button type="button" class="button" data-edit="${worker.id}">Edit</button>
@@ -1403,6 +1630,7 @@ function renderSettings() {
     )
     .join("");
 
+  renderZones();
   document.querySelector("#liveDepth").value = data.settings.liveDepthCm;
   renderLiveStatus();
 
@@ -1441,6 +1669,155 @@ document.querySelector("#workerRows").addEventListener("click", (event) => {
     shownBinIds = "";
     saveData();
   });
+});
+
+function renderZones() {
+  const rows = data.zones.map((zone) => {
+    const bins = allBins.filter((bin) => data.binZones[bin.id] === zone.id);
+    const full = bins.filter((bin) => binStatus(bin.id) === "full").length;
+    const workers = data.workers.filter((worker) => worker.zoneId === zone.id);
+    return `
+      <tr>
+        <td>${zoneTag(zone)}</td>
+        <td>${bins.length}</td>
+        <td>${full ? `<b class="text-full">${full}</b>` : "0"}</td>
+        <td>${workers.length ? workers.map((w) => escapeHtml(w.name)).join(", ") : '<span class="no-workers">No one assigned</span>'}</td>
+        <td class="row-buttons">
+          <button type="button" class="button" data-zone-map="${zone.id}">Map</button>
+          <button type="button" class="button" data-zone-edit="${zone.id}">Edit</button>
+          <button type="button" class="button danger" data-zone-delete="${zone.id}">Delete</button>
+        </td>
+      </tr>
+    `;
+  });
+  document.querySelector("#zoneRows").innerHTML = rows.length
+    ? rows.join("")
+    : '<tr><td colspan="5" class="muted">No zones yet. Click + Add zone to make one.</td></tr>';
+
+  const unassigned = allBins.filter((bin) => !binZone(bin.id)).length;
+  const warning = document.querySelector("#zoneWarning");
+  warning.hidden = unassigned === 0;
+  warning.textContent = `${unassigned} bin${unassigned === 1 ? " isn't" : "s aren't"} in any zone yet. Use "Assign bins on map" to add them.`;
+}
+
+document.querySelector("#zoneRows").addEventListener("click", (event) => {
+  const mapButton = event.target.closest("[data-zone-map]");
+  const editButton = event.target.closest("[data-zone-edit]");
+  const deleteButton = event.target.closest("[data-zone-delete]");
+  if (mapButton) startZoneEdit(mapButton.dataset.zoneMap);
+  if (editButton) openZoneDialog(editButton.dataset.zoneEdit);
+  if (deleteButton) {
+    const zone = zoneById(deleteButton.dataset.zoneDelete);
+    if (!confirm(`Delete ${zone.name}? Its bins and workers will have no zone until you assign them again.`)) return;
+    data.zones = data.zones.filter((z) => z.id !== zone.id);
+    Object.keys(data.binZones).forEach((binId) => {
+      if (data.binZones[binId] === zone.id) delete data.binZones[binId];
+    });
+    data.workers.forEach((worker) => {
+      if (worker.zoneId === zone.id) worker.zoneId = null;
+    });
+    saveData();
+    shownBinIds = "";
+    renderZoneSelects();
+    renderSettings();
+    showToast(`${zone.name} was deleted.`);
+  }
+});
+
+document.querySelector("#addZone").addEventListener("click", () => openZoneDialog());
+document.querySelector("#editZonesMap").addEventListener("click", () => startZoneEdit());
+
+// ---------------------------------------------------------------------------
+// Add / edit zone dialog
+// ---------------------------------------------------------------------------
+
+let editingZoneId = null;
+let zoneColor = ZONE_COLORS[0];
+const zoneDialog = document.querySelector("#zoneDialog");
+
+function renderZoneColors() {
+  document.querySelector("#zoneColors").innerHTML = ZONE_COLORS.map(
+    (color) =>
+      `<button type="button" class="color-swatch${color === zoneColor ? " active" : ""}" data-color="${color}" style="background: ${color}" aria-label="Color ${color}"></button>`
+  ).join("");
+}
+
+function openZoneDialog(zoneId = null) {
+  editingZoneId = zoneId;
+  const zone = zoneById(zoneId);
+  const unused = ZONE_COLORS.find((color) => !data.zones.some((z) => z.color === color));
+  zoneColor = zone?.color || unused || ZONE_COLORS[0];
+  document.querySelector("#zoneDialogTitle").textContent = zone ? `Edit ${zone.name}` : "Add zone";
+  document.querySelector("#zoneName").value = zone?.name || "";
+  document.querySelector("#zoneError").hidden = true;
+  renderZoneColors();
+  document.querySelector("#zoneWorkers").innerHTML = data.workers
+    .map((worker) => {
+      const current = zoneById(worker.zoneId);
+      const note = current && current.id !== zoneId ? `now in ${escapeHtml(current.name)}` : worker.role === "admin" ? "admin" : "";
+      return `
+        <label class="zone-worker">
+          <input type="checkbox" value="${worker.id}" ${zone && worker.zoneId === zone.id ? "checked" : ""} />
+          ${escapeHtml(worker.name)}${note ? ` <small>(${note})</small>` : ""}
+        </label>
+      `;
+    })
+    .join("");
+  zoneDialog.showModal();
+}
+
+document.querySelector("#zoneColors").addEventListener("click", (event) => {
+  const swatch = event.target.closest("[data-color]");
+  if (!swatch) return;
+  zoneColor = swatch.dataset.color;
+  renderZoneColors();
+});
+
+document.querySelector("#cancelZone").addEventListener("click", () => zoneDialog.close());
+
+document.querySelector("#zoneForm").addEventListener("submit", (event) => {
+  event.preventDefault();
+  const name = document.querySelector("#zoneName").value.trim();
+  const error = document.querySelector("#zoneError");
+  let problem = "";
+  if (name.length < 2) problem = "Give the zone a name.";
+  else if (data.zones.some((z) => z.name.toLowerCase() === name.toLowerCase() && z.id !== editingZoneId)) problem = "There's already a zone with that name.";
+  if (problem) {
+    error.textContent = problem;
+    error.hidden = false;
+    return;
+  }
+
+  let zone = zoneById(editingZoneId);
+  const isNew = !zone;
+  if (isNew) {
+    zone = { id: `z${data.nextZoneId++}`, name, color: zoneColor };
+    data.zones.push(zone);
+  } else {
+    Object.assign(zone, { name, color: zoneColor });
+  }
+
+  // Checked workers move into this zone; unchecked ones leave it.
+  const checked = new Set([...document.querySelectorAll("#zoneWorkers input:checked")].map((box) => Number(box.value)));
+  data.workers.forEach((worker) => {
+    if (checked.has(worker.id)) worker.zoneId = zone.id;
+    else if (worker.zoneId === zone.id) worker.zoneId = null;
+  });
+
+  saveData();
+  zoneDialog.close();
+  shownBinIds = "";
+  renderZoneSelects();
+  if (currentPage === "settings") renderSettings();
+  if (zoneEdit.active) {
+    zoneEdit.zoneId = zone.id;
+    renderZoneEditPanel();
+    renderMap();
+  } else if (isNew) {
+    showToast(`${name} created. Now add its bins.`, { label: "Assign bins", onClick: () => startZoneEdit(zone.id) });
+    return;
+  }
+  showToast(isNew ? `${name} created.` : `${name} updated.`);
 });
 
 document.querySelector("#liveDepth").addEventListener("change", (event) => {
@@ -1492,6 +1869,10 @@ function openWorkerDialog(workerId = null) {
   document.querySelector("#workerEmail").value = worker?.email || "";
   document.querySelector("#workerRole").value = worker?.role || "worker";
   document.querySelector("#workerRole").disabled = workerId === data.currentUserId;
+  document.querySelector("#workerZone").innerHTML =
+    '<option value="">No zone (all campus)</option>' +
+    data.zones.map((zone) => `<option value="${zone.id}">${escapeHtml(zone.name)}</option>`).join("");
+  document.querySelector("#workerZone").value = worker?.zoneId && zoneById(worker.zoneId) ? worker.zoneId : "";
   document.querySelector("#workerError").hidden = true;
   workerDialog.showModal();
 }
@@ -1504,6 +1885,7 @@ document.querySelector("#workerForm").addEventListener("submit", (event) => {
   const name = document.querySelector("#workerName").value.trim();
   const email = document.querySelector("#workerEmail").value.trim().toLowerCase();
   const role = document.querySelector("#workerRole").value;
+  const zoneId = document.querySelector("#workerZone").value || null;
   const error = document.querySelector("#workerError");
 
   let problem = "";
@@ -1518,11 +1900,11 @@ document.querySelector("#workerForm").addEventListener("submit", (event) => {
 
   if (editingWorkerId) {
     const worker = data.workers.find((w) => w.id === editingWorkerId);
-    Object.assign(worker, { name, email });
+    Object.assign(worker, { name, email, zoneId });
     if (worker.id !== data.currentUserId) worker.role = role;
     showToast(`${name} was updated.`);
   } else {
-    data.workers.push({ id: data.nextWorkerId++, name, email, role });
+    data.workers.push({ id: data.nextWorkerId++, name, email, role, zoneId });
     showToast(`${name} was added.`);
   }
 

@@ -36,8 +36,16 @@ connection is needed for the map.
   (broker.hivemq.com, topic `tribin/amandevio/bin/3`) and the dashboard turns
   it into the Landfill fill level. Flash the board and set up its Wi-Fi from
   `flash/` in Chrome or Edge; calibrate the empty depth in Settings.
-- **Settings** (admins only): add, edit, and remove workers, and change when a
-  bin counts as full.
+- **Zones**: campus is split into zones (North, Central, South, Athletics &
+  Fields to start). Each worker can be given a zone. When they sign in they
+  see their zone first, and **Go to nearest full bin** picks bins in their zone
+  first. Every page has a zone filter, each card shows its zone, and History
+  has a Zone column.
+- **Settings** (admins only): add, edit, and remove workers and choose their
+  zone; create, rename, recolor, and delete zones and pick who works in each;
+  see how many bins in each zone need emptying; and change when a bin counts
+  as full. **Assign bins on map** opens an editor where you pick a zone and
+  click bins to add them or take them out.
 
 ## 3D model
 

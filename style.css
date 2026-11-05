@@ -1555,6 +1555,168 @@ body.map-open .toast {
   font-size: 13px;
 }
 
+/* ---------- Zones ---------- */
+
+.zone-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 12.5px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.zone-tag::before {
+  content: "";
+  width: 10px;
+  height: 10px;
+  background: var(--zone);
+  border-radius: 3px;
+}
+
+.zone-tag.zone-none::before {
+  background: transparent;
+  border: 1.5px dashed #a3a9a3;
+}
+
+.card-zone {
+  margin: -8px 0 12px;
+}
+
+.popup .popup-zone {
+  margin: -6px 0 8px !important;
+}
+
+#zoneFilter {
+  width: auto;
+  min-width: 170px;
+}
+
+.zone-warning {
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  color: #8a5a00;
+  background: var(--almost-soft);
+  border-radius: 10px;
+  font-size: 14px;
+}
+
+.no-workers,
+.text-full {
+  color: var(--full);
+  font-weight: 700;
+}
+
+.page-map.zone-editing .map-drawer {
+  display: none;
+}
+
+.zone-hint {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.zone-chips {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.zone-chip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  color: var(--text);
+  background: var(--card);
+  border: 1.5px solid var(--line);
+  border-radius: 9px;
+  font: inherit;
+  font-size: 13.5px;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+}
+
+.zone-chip i {
+  width: 12px;
+  height: 12px;
+  background: var(--zone);
+  border-radius: 4px;
+}
+
+.zone-chip b {
+  margin-left: auto;
+}
+
+.zone-chip.active {
+  background: color-mix(in srgb, var(--zone) 12%, white);
+  border-color: var(--zone);
+}
+
+.bin-pin.pin-zone {
+  border-color: var(--zone);
+  box-shadow:
+    0 0 0 3px color-mix(in srgb, var(--zone) 35%, transparent),
+    0 2px 6px rgba(0, 0, 0, 0.3);
+}
+
+.bin-pin.pin-nozone {
+  border-color: #9aa09a;
+  border-style: dashed;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+}
+
+.bin-pin.pin-selected-zone {
+  transform: scale(1.18);
+}
+
+.color-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.color-swatch {
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 3px solid white;
+  border-radius: 9px;
+  box-shadow: 0 0 0 1px var(--line);
+  cursor: pointer;
+}
+
+.color-swatch.active {
+  box-shadow: 0 0 0 2px var(--text);
+}
+
+.zone-workers {
+  display: grid;
+  gap: 6px;
+  max-height: 210px;
+  overflow-y: auto;
+}
+
+.zone-worker {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-weight: 500;
+}
+
+.zone-worker input {
+  width: auto;
+  accent-color: var(--green);
+}
+
+.zone-worker small {
+  color: var(--muted);
+}
+
 /* ---------- Live sensor ---------- */
 
 .live-tag {
