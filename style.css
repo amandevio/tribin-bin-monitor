@@ -1978,3 +1978,203 @@ body.map-open .toast {
     grid-column: 1 / -1;
   }
 }
+
+/* =========================================================================
+   Minimal look: light top bar, bins as a simple list
+   ========================================================================= */
+
+.topbar {
+  color: var(--text);
+  background: var(--card);
+  border-bottom: 1px solid var(--line);
+}
+
+.nav button {
+  color: var(--muted);
+}
+
+.nav button:hover {
+  color: var(--text);
+  background: #f1ede2;
+}
+
+.nav button.active {
+  color: var(--green);
+  background: #e3eee7;
+}
+
+.topbar .button {
+  color: var(--text);
+  background: none;
+  border-color: var(--line);
+}
+
+.user-name {
+  color: var(--muted);
+  font-weight: 500;
+}
+
+/* The main action stays, but quieter. */
+.next-bin {
+  padding: 12px 16px;
+  box-shadow: none;
+}
+
+.next-bin-arrow {
+  width: 34px;
+  height: 34px;
+  border-radius: 9px;
+  font-size: 17px;
+}
+
+.next-bin-text strong {
+  font-size: 16px;
+}
+
+.next-bin-text small {
+  font-size: 13px;
+}
+
+/* One list instead of a wall of cards. */
+.bin-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  overflow: hidden;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+}
+
+.bin-grid .empty {
+  border: 0;
+  border-radius: 0;
+}
+
+.bin-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(220px, 1fr) auto;
+  align-items: center;
+  gap: 24px;
+  padding: 14px 18px;
+  background: none;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  border-left: 4px solid var(--ok);
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.bin-card:last-child {
+  border-bottom: 0;
+}
+
+.bin-card.is-almost {
+  border-left-color: var(--almost);
+}
+
+.bin-card.is-full {
+  border-left-color: var(--full);
+}
+
+.bin-card.is-offline {
+  border-left: 4px dashed var(--offline);
+}
+
+.card-info {
+  min-width: 0;
+}
+
+.card-top {
+  justify-content: flex-start;
+  gap: 10px;
+  font-size: 16px;
+}
+
+.card-location {
+  min-height: 0;
+  margin: 1px 0 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.card-meta {
+  margin: 3px 0 0;
+  font-size: 12.5px;
+}
+
+/* Thin horizontal bars: Recycle / Landfill / Compost */
+.bars {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 0;
+}
+
+.bar {
+  display: grid;
+  grid-template-columns: 62px 1fr 36px;
+  align-items: center;
+  gap: 8px;
+}
+
+.bar-label {
+  font-size: 12px;
+  text-align: left;
+}
+
+.bar-track {
+  max-width: none;
+  height: 8px;
+  border-radius: 4px;
+}
+
+.bar-fill {
+  top: 0;
+  right: auto;
+  bottom: 0;
+  height: auto;
+  border-radius: 4px;
+  transition: width 0.6s ease;
+}
+
+.bar-percent {
+  font-size: 12.5px;
+  text-align: right;
+}
+
+.card-buttons {
+  grid-template-columns: auto auto;
+  margin: 0;
+}
+
+.card-buttons .primary {
+  padding-inline: 18px;
+}
+
+@media (max-width: 700px) {
+  .nav {
+    background: var(--card);
+    border-top: 1px solid var(--line);
+    box-shadow: 0 -4px 14px rgba(22, 36, 28, 0.06);
+  }
+
+  .user-name {
+    display: none;
+  }
+
+  .bin-card {
+    grid-template-columns: 1fr;
+    gap: 10px;
+    padding: 14px;
+  }
+
+  .card-buttons {
+    grid-template-columns: 1fr auto;
+  }
+}
+
+.topbar .logo strong {
+  color: var(--green);
+}

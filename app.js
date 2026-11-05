@@ -733,22 +733,24 @@ function cardHtml(bin) {
   const bars = COMPARTMENTS.map(
     ({ key, label }) => `
       <div class="bar" data-key="${key}">
-        <span class="bar-percent"></span>
-        <div class="bar-track"><div class="bar-fill"></div></div>
         <span class="bar-label">${label}</span>
+        <div class="bar-track"><div class="bar-fill"></div></div>
+        <span class="bar-percent"></span>
       </div>
     `
   ).join("");
 
   return `
     <article class="bin-card" data-id="${bin.id}">
-      <div class="card-top">
-        <strong>Bin ${bin.id}${bin.id === LIVE.binId ? ' <span class="live-tag">LIVE</span>' : ""}</strong>
-        <span class="badge"></span>
+      <div class="card-info">
+        <div class="card-top">
+          <strong>Bin ${bin.id}${bin.id === LIVE.binId ? ' <span class="live-tag">LIVE</span>' : ""}</strong>
+          <span class="badge"></span>
+        </div>
+        <p class="card-location">${escapeHtml(bin.location)}</p>
+        <p class="card-meta"></p>
       </div>
-      <p class="card-location">${escapeHtml(bin.location)}</p>
       <div class="bars">${bars}</div>
-      <p class="card-meta"></p>
       <div class="card-buttons">
         <button type="button" class="button primary" data-action="empty" data-id="${bin.id}">Mark emptied</button>
         <button type="button" class="button icon-button" data-action="map" data-id="${bin.id}" aria-label="Show on map" title="Show on map"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg></button>
@@ -770,7 +772,7 @@ function updateCard(card, bin) {
     const bar = card.querySelector(`[data-key="${key}"]`);
     bar.querySelector(".bar-percent").textContent = `${value}%`;
     const fill = bar.querySelector(".bar-fill");
-    fill.style.height = `${value}%`;
+    fill.style.width = `${value}%`;
     fill.className = `bar-fill fill-${status === "offline" ? "offline" : statusOf(value)}`;
   });
 
