@@ -3213,3 +3213,134 @@ td.num {
   }
 }
 
+
+/* ---------- Sensor batteries ---------- */
+
+.summary-box.is-battery svg {
+  color: #c2410c;
+}
+
+.summary-box.selected.is-battery svg {
+  color: currentColor;
+}
+
+.battery-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 10px 3px 8px;
+  color: #b23c0a;
+  background: #ffedd5;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.battery-badge svg,
+.battery-level svg,
+.home-alert-icon svg,
+.popup-battery svg {
+  flex-shrink: 0;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.battery-badge svg,
+.battery-level svg,
+.popup-battery svg {
+  width: 15px;
+  height: 15px;
+}
+
+.battery-level {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.battery-level.low,
+td.battery-low {
+  color: #b23c0a;
+  font-weight: 700;
+}
+
+/* Home: "sensors need a new battery" notice */
+.home-alert {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  margin: -6px 0 20px;
+  padding: 14px 18px;
+  color: var(--text);
+  background: #fff6ed;
+  border: 1px solid #fed7aa;
+  border-radius: var(--radius);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.home-alert:hover {
+  border-color: #fdba74;
+}
+
+.home-alert-icon {
+  display: grid;
+  flex-shrink: 0;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  color: #c2410c;
+  background: #ffedd5;
+  border-radius: 12px;
+}
+
+.home-alert-icon svg {
+  width: 20px;
+  height: 20px;
+}
+
+.home-alert-text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.home-alert-text span {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+/* Map popup */
+.popup .popup-battery {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 6px 0 0 !important;
+  font-size: 12.5px;
+}
+
+.popup .popup-battery.low {
+  color: #b23c0a !important;
+  font-weight: 700;
+}
+
+.popup-battery-button {
+  margin-top: 8px;
+  color: #b23c0a;
+  border-color: #fed7aa;
+}
+
+.popup-battery-button svg {
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+}

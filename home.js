@@ -202,6 +202,23 @@ function renderHome() {
 
   setHtml("homeHero", heroHtml(scope));
 
+  const lowBattery = bins.filter((bin) => isLowBattery(bin.id)).sort((a, b) => batteryOf(a.id) - batteryOf(b.id));
+  setHtml(
+    "homeAlert",
+    lowBattery.length
+      ? `
+        <button type="button" class="home-alert" data-home-go="battery">
+          <span class="home-alert-icon">${ICONS.battery}</span>
+          <span class="home-alert-text">
+            <b>${lowBattery.length} sensor${lowBattery.length === 1 ? " needs" : "s need"} a new battery</b>
+            <span>Lowest: Bin ${lowBattery[0].id} at ${batteryOf(lowBattery[0].id)}%</span>
+          </span>
+          <span class="text-link">See them</span>
+        </button>
+      `
+      : ""
+  );
+
   const events = recentCollections(scope);
   const today = startOfDay(Date.now());
   const emptiedToday = events.filter((e) => e.at >= today).length;

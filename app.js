@@ -49,6 +49,7 @@ const ICONS = {
   signOut: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3"/><path d="M10 17l5-5-5-5"/><path d="M15 12H4"/></svg>',
   user: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 20a8 8 0 0 1 16 0"/></svg>',
   arrow: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>',
+  battery: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2.5" y="7.5" width="16.5" height="9" rx="2"/><path d="M21.5 10.5v3"/><path d="M6 10.5v3"/></svg>',
 };
 
 // Bin locations come from bins.js (the project spreadsheet).
@@ -88,9 +89,10 @@ function defaultData() {
     };
   });
   seedSensorStatus(levels);
+  seedBattery(levels);
 
   const d = {
-    settings: { fullAt: 80, almostAt: 50, liveDepthCm: 60 },
+    settings: { fullAt: 80, almostAt: 50, liveDepthCm: 60, lowBatteryAt: 20 },
     workers: [
       { id: 1, name: "Jordan Reyes", email: "jordan.reyes@csus.edu", role: "admin" },
       { id: 2, name: "Maria Lopez", email: "maria.lopez@csus.edu", role: "worker" },
@@ -100,6 +102,7 @@ function defaultData() {
     ],
     levels,
     emptiedLog: [],
+    batteryLog: [],
     currentUserId: null,
     nextWorkerId: 6,
   };
@@ -151,6 +154,10 @@ function loadData() {
         }
       });
       saved.settings.liveDepthCm ??= 60;
+      saved.settings.lowBatteryAt ??= 20;
+      // Data saved before batteries were tracked gets battery levels now.
+      if (!Object.values(saved.levels).some((level) => "battery" in level)) seedBattery(saved.levels);
+      saved.batteryLog ??= [];
       // Data saved before zones existed gets the starting zones.
       if (!saved.zones) seedZones(saved);
       // Data saved before reports existed: work out when each bin was last
@@ -185,6 +192,32 @@ function seedSensorStatus(levels) {
     level.lastReading = Date.now() - (level.online ? 0 : (10 + random() * 80) * 60 * 1000);
   });
 }
+
+// Sensor batteries: most have plenty left, a few are getting low, and some
+// of the offline sensors have gone flat. The live test sensor runs on USB.
+function seedBattery(levels) {
+  const random = seededRandom(911);
+  Object.entries(levels).forEach(([binId, level]) => {
+    if (Number(binId) === LIVE.binId) {
+      level.battery = null;
+      return;
+    }
+    level.battery = random() < 0.07 ? 3 + random() * 15 : 24 + random() * 76;
+    if (!level.online && random() < 0.5) level.battery = 0;
+  });
+}
+
+function batteryOf(binId) {
+  const battery = data.levels[binId].battery;
+  return battery == null ? null : Math.round(battery);
+}
+
+function isLowBattery(binId) {
+  const battery = batteryOf(binId);
+  return battery != null && battery <= data.settings.lowBatteryAt;
+}
+
+const isDeadBattery = (binId) => batteryOf(binId) === 0;
 
 // Same starting numbers on every fresh load.
 function seededRandom(seed) {
@@ -250,8 +283,15 @@ function readSensors() {
     // An offline sensor sends nothing, so its bin keeps its last reading.
     // With real sensors, mark a bin offline when it hasn't reported in
     // about 30 minutes.
+    // Batteries drain slowly, and a flat one means the sensor goes quiet
+    // until someone puts in a new battery.
+    if (level.battery != null) {
+      if (level.online) level.battery = Math.max(0, level.battery - Math.random() * 0.0003);
+      if (level.battery < 0.5) level.online = false;
+    }
+    const hasPower = level.battery == null || level.battery >= 0.5;
     if (level.online && Math.random() < 0.0003) level.online = false;
-    else if (!level.online && Math.random() < 0.01) level.online = true;
+    else if (!level.online && hasPower && Math.random() < 0.01) level.online = true;
     if (!level.online) return;
     level.lastReading = Date.now();
 
@@ -378,6 +418,7 @@ function binStatus(binId) {
 
 function offlineText(binId) {
   if (binId === LIVE.binId && !liveIsFresh()) return "Live sensor not connected";
+  if (isDeadBattery(binId)) return `Battery is flat · last reading ${timeAgo(data.levels[binId].lastReading)}`;
   return `No signal · last reading ${timeAgo(data.levels[binId].lastReading)}`;
 }
 
@@ -504,6 +545,34 @@ function markEmptied(binId) {
   saveData();
   render();
   showToast(`Bin ${binId} marked as emptied.`, { label: "Undo", onClick: () => undoEmptied(binId, before) });
+}
+
+// Someone put a new battery in this bin's sensor.
+function replaceBattery(binId) {
+  const level = data.levels[binId];
+  const before = { battery: level.battery, online: level.online, lastReading: level.lastReading };
+  level.battery = 100;
+  if (!level.online && before.battery < 0.5) {
+    level.online = true;
+    level.lastReading = Date.now();
+  }
+  data.batteryLog ??= [];
+  data.batteryLog.unshift({ binId, workerId: data.currentUserId, at: Date.now(), before: Math.round(before.battery) });
+  data.batteryLog.length = Math.min(data.batteryLog.length, 500);
+  saveData();
+  shownBinIds = "";
+  render();
+  showToast(`Bin ${binId} has a new battery.`, {
+    label: "Undo",
+    onClick: () => {
+      Object.assign(data.levels[binId], before);
+      data.batteryLog.shift();
+      saveData();
+      shownBinIds = "";
+      render();
+      showToast(`Undone. Bin ${binId} is back to ${Math.round(before.battery)}% battery.`);
+    },
+  });
 }
 
 // Put a bin back the way it was, in case "Mark emptied" was tapped by mistake.
@@ -800,17 +869,23 @@ function renderBins() {
   });
 
   const zoneLabel = zoneFilter === "all" ? "All zones" : zoneFilter === "none" ? "No zone" : zoneById(zoneFilter)?.name || "All zones";
-  const subtitle = `${zoneLabel} · ${zoneBins.length} bins · ${counts.full} need${counts.full === 1 ? "s" : ""} emptying`;
+  const lowBattery = zoneBins.filter((bin) => isLowBattery(bin.id)).length;
+  document.querySelector("#countBattery").textContent = lowBattery;
+  const subtitle = `${zoneLabel} · ${zoneBins.length} bins · ${counts.full} need${counts.full === 1 ? "s" : ""} emptying${lowBattery ? ` · ${lowBattery} low battery` : ""}`;
   const subtitleEl = document.querySelector("#binsSubtitle");
   if (subtitleEl.textContent !== subtitle) subtitleEl.textContent = subtitle;
 
   const visible = zoneBins
-    .filter((bin) => binFilter === "all" || binStatus(bin.id) === binFilter)
+    .filter((bin) => binFilter === "all" || (binFilter === "battery" ? isLowBattery(bin.id) : binStatus(bin.id) === binFilter))
     .filter((bin) => `bin ${bin.id} ${bin.location}`.toLowerCase().includes(searchText))
     .sort(
       (a, b) =>
         (b.id === LIVE.binId) - (a.id === LIVE.binId) ||
-        (binSort === "nearest" ? metersToBin(a) - metersToBin(b) : fullest(b.id) - fullest(a.id))
+        (binFilter === "battery"
+          ? batteryOf(a.id) - batteryOf(b.id)
+          : binSort === "nearest"
+            ? metersToBin(a) - metersToBin(b)
+            : fullest(b.id) - fullest(a.id))
     );
 
   // Only rebuild the cards when a bin joins or leaves the list (or, when
@@ -818,7 +893,7 @@ function renderBins() {
   // swallow clicks while numbers update.
   const grid = document.querySelector("#binGrid");
   const order = visible.map((bin) => bin.id);
-  const ids = binSort + (binSort === "nearest" ? order : [...order].sort((a, b) => a - b)).join(",");
+  const ids = binFilter + binSort + (binSort === "nearest" || binFilter === "battery" ? order : [...order].sort((a, b) => a - b)).join(",");
   if (ids !== shownBinIds) {
     shownBinIds = ids;
     grid.innerHTML = visible.length
@@ -835,6 +910,7 @@ function renderBins() {
 const EMPTY_TEXT = {
   full: "All clear! No bins need emptying right now.",
   offline: "All sensors are working.",
+  battery: "No sensors need a new battery.",
 };
 
 function cardHtml(bin) {
@@ -854,13 +930,18 @@ function cardHtml(bin) {
         <div class="card-top">
           <strong>Bin ${bin.id}${bin.id === LIVE.binId ? ' <span class="live-tag">LIVE</span>' : ""}</strong>
           <span class="badge"></span>
+          <span class="battery-badge" hidden></span>
         </div>
         <p class="card-location">${escapeHtml(bin.location)}</p>
         <p class="card-meta"></p>
       </div>
       <div class="bars">${bars}</div>
       <div class="card-buttons">
-        <button type="button" class="button primary" data-action="empty" data-id="${bin.id}">${ICONS.check}Mark emptied</button>
+        ${
+          binFilter === "battery" && isLowBattery(bin.id)
+            ? `<button type="button" class="button primary" data-action="battery" data-id="${bin.id}">${ICONS.battery}Battery replaced</button>`
+            : `<button type="button" class="button primary" data-action="empty" data-id="${bin.id}">${ICONS.check}Mark emptied</button>`
+        }
         <button type="button" class="button" data-action="history" data-id="${bin.id}">${ICONS.chart}History</button>
         <button type="button" class="button" data-action="map" data-id="${bin.id}">${ICONS.map}Map</button>
       </div>
@@ -890,6 +971,13 @@ function updateCard(card, bin) {
   if (zoneFilter === "all") parts.push(zoneTag(binZone(bin.id)));
   if (myLocation) parts.push(`<b>${formatDistance(metersToBin(bin))} away</b>`);
   parts.push(escapeHtml(status === "offline" ? offlineText(bin.id) : emptiedText(bin.id)));
+  const battery = batteryOf(bin.id);
+  const low = isLowBattery(bin.id);
+  if (battery != null) parts.push(`<span class="battery-level${low ? " low" : ""}" title="Sensor battery">${ICONS.battery}${battery}%</span>`);
+  const batteryBadge = card.querySelector(".battery-badge");
+  const badgeHtml = low ? `${ICONS.battery}${battery === 0 ? "Battery flat" : "Low battery"}` : "";
+  if (batteryBadge.innerHTML !== badgeHtml) batteryBadge.innerHTML = badgeHtml;
+  batteryBadge.hidden = !low;
   const meta = parts.map((part) => `<span>${part}</span>`).join("");
   const metaEl = card.querySelector(".card-meta");
   if (metaEl.innerHTML !== meta) metaEl.innerHTML = meta;
@@ -932,6 +1020,10 @@ document.addEventListener("click", (event) => {
     if (wasTripDestination) showNextBinPrompt(binId);
   }
   if (button.dataset.action === "next-bin") goToNearestFullBin();
+  if (button.dataset.action === "battery") {
+    map?.closePopup();
+    replaceBattery(binId);
+  }
   if (button.dataset.action === "history") {
     map?.closePopup();
     openBinHistory(binId);
@@ -1099,10 +1191,16 @@ function popupHtml(bin) {
       ${rows}
       ${offline ? `<p class="popup-offline">Sensor offline. ${offlineText(bin.id)}, so these levels may be out of date.</p>` : ""}
       <p class="popup-emptied">${emptiedText(bin.id)}</p>
+      ${
+        batteryOf(bin.id) == null
+          ? ""
+          : `<p class="popup-battery${isLowBattery(bin.id) ? " low" : ""}">${ICONS.battery}Sensor battery ${batteryOf(bin.id)}%${isLowBattery(bin.id) ? " · needs a new one" : ""}</p>`
+      }
       <div class="popup-buttons">
         <button type="button" class="button" data-action="directions" data-id="${bin.id}">Directions</button>
         <button type="button" class="button primary" data-action="empty" data-id="${bin.id}">Mark emptied</button>
       </div>
+      ${isLowBattery(bin.id) ? `<button type="button" class="button full-width popup-battery-button" data-action="battery" data-id="${bin.id}">${ICONS.battery}Battery replaced</button>` : ""}
       <button type="button" class="link-button" data-action="history" data-id="${bin.id}">See this bin's history</button>
     </div>
   `;
@@ -1728,6 +1826,8 @@ function renderSettings() {
   document.querySelector("#fullAtValue").textContent = `${fullAt}%`;
   document.querySelector("#almostAt").value = almostAt;
   document.querySelector("#almostAtValue").textContent = `${almostAt}%`;
+  document.querySelector("#lowBatteryAt").value = data.settings.lowBatteryAt;
+  document.querySelector("#lowBatteryAtValue").textContent = `${data.settings.lowBatteryAt}%`;
 }
 
 document.querySelector("#workerRows").addEventListener("click", (event) => {
@@ -1747,7 +1847,7 @@ document.querySelector("#workerRows").addEventListener("click", (event) => {
 });
 
 // Keep "almost full" below "needs emptying".
-["fullAt", "almostAt"].forEach((key) => {
+["fullAt", "almostAt", "lowBatteryAt"].forEach((key) => {
   document.querySelector(`#${key}`).addEventListener("input", (event) => {
     let value = Number(event.target.value);
     if (key === "fullAt") value = Math.max(value, data.settings.almostAt + 5);

@@ -503,6 +503,7 @@ function renderReports() {
               <td>${zoneTag(binZone(bin.id))}</td>
               <td><span class="badge badge-${status}">${STATUS_TEXT[status]}</span></td>
               ${COMPARTMENTS.map(({ key }) => `<td class="num">${Math.round(level[key])}%</td>`).join("")}
+              <td class="num${isLowBattery(bin.id) ? " battery-low" : ""}">${batteryOf(bin.id) == null ? "USB" : `${batteryOf(bin.id)}%`}</td>
               <td>${escapeHtml(timeAgo(level.emptiedAt))}</td>
               <td class="num">${metric.count}</td>
               <td class="num">${metric.avgFull == null ? "-" : `${metric.avgFull}%`}</td>
@@ -511,7 +512,7 @@ function renderReports() {
           `;
         })
         .join("")
-    : '<tr><td colspan="11" class="muted">No bins in this zone.</td></tr>';
+    : '<tr><td colspan="12" class="muted">No bins in this zone.</td></tr>';
   const more = document.querySelector("#showAllBins");
   more.hidden = report.bins.length <= 12;
   more.textContent = reportState.showAllBins ? "Show fewer" : `Show all ${report.bins.length} bins`;
@@ -681,7 +682,7 @@ function reportFileName(extension) {
   return `tribin-report${zone}-${fmtDate(Date.now())}.${extension}`;
 }
 
-const BIN_HEADER = ["Bin", "Location", "Zone", "Status", "Recycle %", "Landfill %", "Compost %", "Sensor", "Last emptied", `Emptied (${REPORT_DAYS} days)`, "Full when emptied %", "Hours between emptying"];
+const BIN_HEADER = ["Bin", "Location", "Zone", "Status", "Recycle %", "Landfill %", "Compost %", "Battery %", "Sensor", "Last emptied", `Emptied (${REPORT_DAYS} days)`, "Full when emptied %", "Hours between emptying"];
 
 function binRows(report) {
   return report.bins.map((bin) => {
@@ -693,7 +694,8 @@ function binRows(report) {
       zoneName(bin.id),
       STATUS_TEXT[binStatus(bin.id)],
       ...COMPARTMENTS.map(({ key }) => Math.round(level[key])),
-      isOnline(bin.id) ? "Online" : "Offline",
+      batteryOf(bin.id) ?? "USB power",
+      isOnline(bin.id) ? (isLowBattery(bin.id) ? "Online, low battery" : "Online") : isDeadBattery(bin.id) ? "Offline, battery flat" : "Offline",
       `${fmtDate(level.emptiedAt)} ${fmtTime(level.emptiedAt)}`,
       metric.count,
       metric.avgFull ?? "",
@@ -759,7 +761,15 @@ async function downloadExcel() {
     ],
     [34, 46]
   );
-  addSheet("Bins", [BIN_HEADER, ...binRows(report)], [6, 44, 18, 15, 10, 10, 10, 9, 20, 16, 18, 20]);
+  addSheet("Bins", [BIN_HEADER, ...binRows(report)], [6, 44, 18, 15, 10, 10, 10, 10, 20, 20, 16, 18, 20]);
+  const replaced = (data.batteryLog || []).filter((e) => report.bins.some((bin) => bin.id === e.binId));
+  if (replaced.length) {
+    addSheet(
+      "Battery changes",
+      [["Date", "Time", "Bin", "Location", "Zone", "Replaced by", "Battery before %"], ...replaced.map((e) => [fmtDate(e.at), fmtTime(e.at), e.binId, allBins.find((b) => b.id === e.binId)?.location || "", zoneName(e.binId), workerName(e.workerId), e.before])],
+      [12, 10, 6, 44, 18, 18, 16]
+    );
+  }
   addSheet("Collections", [COLLECTION_HEADER, ...collectionRows(report)], [12, 10, 6, 44, 18, 18, 20, 20, 20]);
   addSheet("Workers", [["Worker", "Zone", `Bins emptied (${REPORT_DAYS} days)`, "Bins emptied today"], ...report.workers.map((w) => [w.name, w.zone, w.count, w.today])], [22, 20, 24, 20]);
 

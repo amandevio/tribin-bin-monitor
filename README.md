@@ -24,6 +24,15 @@ connection is needed for the map.
 - **Sensor offline**: bins whose sensor has stopped reporting show in gray
   with the time of their last reading. Admins find them with the **Offline**
   tab on the Bins page or the status filter on the map.
+- **Low battery**: every sensor shows its battery level. Sensors at or below
+  the low-battery level (20% to start; change it in Settings > Alerts &
+  sensor) get an orange **Low battery** tag and appear under the **Low
+  battery** tab on the Bins page, lowest first, with a **Battery replaced**
+  button (with Undo). Home shows a notice when sensors in your zone need a new
+  battery, map popups show the battery level, and a flat battery takes the
+  sensor offline until it's replaced. Reports and the Excel/PDF downloads
+  include battery levels and a log of battery changes. Battery levels are
+  simulated in the demo; the live test sensor runs on USB power.
 - **Bins**: every bin as a card with three fill bars. Tap **To empty**,
   **Almost full**, or **All** at the top to switch lists. Fullest bins come
   first, or nearest first once location is allowed. Each bin has **Mark
