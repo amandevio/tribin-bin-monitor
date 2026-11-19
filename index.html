@@ -13,7 +13,7 @@
     />
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
-    <link rel="stylesheet" href="style.css?v=11" />
+    <link rel="stylesheet" href="style.css?v=12" />
   </head>
 
   <body>
@@ -51,7 +51,7 @@
         <nav class="nav">
           <button type="button" data-page="bins"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></svg><span>Bins</span></button>
           <button type="button" data-page="map"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg><span>Map</span></button>
-          <button type="button" data-page="history"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg><span>History</span></button>
+          <button type="button" data-page="history"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h16M7 16v-5M12 16V6M17 16v-8"/></svg><span>Reports</span></button>
           <button type="button" data-page="settings" data-admin-only><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h9M17 6h3M4 12h3M11 12h9M4 18h11M19 18h1"/><circle cx="15" cy="6" r="2"/><circle cx="9" cy="12" r="2"/><circle cx="17" cy="18" r="2"/></svg><span>Settings</span></button>
         </nav>
 
@@ -134,6 +134,12 @@
                   <button type="button" data-map-style="satellite">Satellite</button>
               </div>
 
+              <!-- Group nearby bins into circles, or show every bin on its own -->
+              <div class="map-styles map-group" role="group" aria-label="Group bins">
+                  <button type="button" data-group="on" class="active">Grouped</button>
+                  <button type="button" data-group="off">Ungrouped</button>
+              </div>
+
               <div class="map-legend">
                   <div class="legend-pin">
                       <div class="bin-pin pin-almost"><span class="fill-ok" style="height: 35%"></span><span class="fill-almost" style="height: 65%"></span><span class="fill-full" style="height: 90%"></span></div>
@@ -148,32 +154,100 @@
               </div>
           </section>
 
-          <!-- Collection History page -->
+          <!-- Reports page: graphs, every bin's history, downloads -->
           <section id="page-history" class="page" hidden>
-              <div class="card">
-                  <div class="card-head">
-                      <div>
-                          <h2>Collection History</h2>
-                          <p class="muted">
-                              View recently emptied campus bins.
-                          </p>
-                      </div>
+              <div class="report-head">
+                  <div>
+                      <h1 class="page-title">Reports</h1>
+                      <p id="reportSubtitle" class="muted"></p>
                   </div>
+                  <div class="report-actions">
+                      <select id="reportZone" aria-label="Zone"></select>
+                      <button type="button" id="downloadExcel" class="button download-button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg>Excel</button>
+                      <button type="button" id="downloadPdf" class="button download-button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg>PDF</button>
+                  </div>
+              </div>
 
+              <div id="reportStats" class="stat-row"></div>
+
+              <div class="card">
+                  <h2>Bins emptied per day</h2>
+                  <p class="muted card-sub">Last 14 days. Hover a day to see the number.</p>
+                  <div id="dailyChart" class="chart"></div>
+              </div>
+
+              <div class="card" id="binHistoryCard">
+                  <div class="card-head bin-history-head">
+                      <div>
+                          <h2>Bin history</h2>
+                          <p id="binPlace" class="muted"></p>
+                      </div>
+                      <select id="reportBin" aria-label="Pick a bin"></select>
+                  </div>
+                  <div class="chart-legend">
+                      <span><i style="background: #2a78d6"></i>Recycle</span>
+                      <span><i style="background: #eb6834"></i>Landfill</span>
+                      <span><i style="background: #1baf7a"></i>Compost</span>
+                      <span><i class="legend-dashed"></i>Emptied</span>
+                  </div>
+                  <div id="binChart" class="chart"></div>
+                  <div id="binStats" class="stat-row compact"></div>
                   <div class="table-wrap">
                       <table>
                           <thead>
-                              <tr>
-                                  <th>Bin</th>
-                                  <th>Zone</th>
-                                  <th>Worker</th>
-                                  <th>Date and Time</th>
-                              </tr>
+                              <tr><th>Emptied</th><th>By</th><th class="num">Recycle</th><th class="num">Landfill</th><th class="num">Compost</th></tr>
                           </thead>
-                          <tbody id="historyRows"></tbody>
+                          <tbody id="binEventRows"></tbody>
                       </table>
                   </div>
               </div>
+
+              <div class="report-grid">
+                  <div class="card">
+                      <h2>Most emptied bins</h2>
+                      <p class="muted card-sub">Last 14 days. Click one to see its history.</p>
+                      <div id="topBins" class="bar-list"></div>
+                  </div>
+                  <div class="card">
+                      <h2>Emptied by worker</h2>
+                      <p class="muted card-sub">Last 14 days.</p>
+                      <div id="workerBars" class="bar-list"></div>
+                  </div>
+              </div>
+
+              <div class="card">
+                  <h2>All bins</h2>
+                  <p class="muted card-sub">Every bin's levels right now and how often it gets emptied. Click a row to see its history.</p>
+                  <div class="table-wrap">
+                      <table class="data-table">
+                          <thead>
+                              <tr>
+                                  <th>Bin</th><th>Location</th><th>Zone</th><th>Status</th>
+                                  <th class="num">Recycle</th><th class="num">Landfill</th><th class="num">Compost</th>
+                                  <th>Last emptied</th><th class="num">Emptied (14 d)</th><th class="num">Full when emptied</th><th class="num">Emptied every</th>
+                              </tr>
+                          </thead>
+                          <tbody id="allBinRows" class="clickable-rows"></tbody>
+                      </table>
+                  </div>
+                  <button type="button" id="showAllBins" class="button show-more"></button>
+              </div>
+
+              <div class="card">
+                  <h2>Collection history</h2>
+                  <p class="muted card-sub">Who emptied which bin, and when.</p>
+                  <div class="table-wrap">
+                      <table>
+                          <thead>
+                              <tr><th>Bin</th><th>Zone</th><th>Worker</th><th>Date and time</th><th class="num">Full when emptied</th></tr>
+                          </thead>
+                          <tbody id="historyRows" class="clickable-rows"></tbody>
+                      </table>
+                  </div>
+                  <p id="historyNote" class="muted card-sub"></p>
+              </div>
+
+              <p class="demo-note">Demo data: readings from before you first opened the dashboard are simulated until real sensors are connected.</p>
           </section>
 
           <!-- Settings page (admins only) -->
@@ -307,6 +381,7 @@
     <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
     <script src="https://unpkg.com/mqtt@5.16.1/dist/mqtt.min.js"></script>
     <script src="bins.js"></script>
-    <script src="app.js?v=11"></script>
+    <script src="app.js?v=12"></script>
+    <script src="reports.js?v=12"></script>
   </body>
 </html>

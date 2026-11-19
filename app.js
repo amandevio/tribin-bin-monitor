@@ -27,6 +27,11 @@ const LIVE_TIMEOUT_MS = 30000; // no reading for this long = sensor offline
 const MAP_STATUSES = ["full", "almost", "ok", "offline"];
 const SHORT_STATUS = { full: "To empty", almost: "Almost full", ok: "OK", offline: "Offline" };
 
+// How many percent each part fills per busy hour at an average bin.
+const PART_RATE = { recycling: 2.3, landfill: 3.2, compost: 1.3 };
+const HOUR_MS = 60 * 60 * 1000;
+const DAY_MS = 24 * HOUR_MS;
+
 // Bin locations come from bins.js (the project spreadsheet).
 const allBins = Array.isArray(window.bins) ? window.bins : [];
 
@@ -50,12 +55,17 @@ function defaultData() {
   const random = seededRandom(131);
   const levels = {};
   allBins.forEach((bin) => {
+    // Each bin is somewhere in its fill-up since it was last emptied.
+    const speed = fillSpeed(bin.id);
+    const hours = (random() * 1.08 * (78 + random() * 20)) / (PART_RATE.landfill * speed);
+    const emptiedAt = busyHoursBefore(Date.now(), hours);
     levels[bin.id] = {
-      landfill: random() ** 1.6 * 96,
-      recycling: random() ** 1.6 * 85,
-      compost: random() ** 1.6 * 70,
-      emptiedAt: Date.now() - random() * 8 * 60 * 60 * 1000,
+      landfill: Math.min(100, PART_RATE.landfill * speed * hours * (0.9 + random() * 0.2)),
+      recycling: Math.min(100, PART_RATE.recycling * speed * hours * (0.8 + random() * 0.4)),
+      compost: Math.min(100, PART_RATE.compost * speed * hours * (0.7 + random() * 0.6)),
+      emptiedAt,
       emptiedBy: null,
+      historyAnchor: emptiedAt, // reports simulate the past before this moment
     };
   });
   seedSensorStatus(levels);
@@ -124,6 +134,14 @@ function loadData() {
       saved.settings.liveDepthCm ??= 60;
       // Data saved before zones existed gets the starting zones.
       if (!saved.zones) seedZones(saved);
+      // Data saved before reports existed: work out when each bin was last
+      // emptied from how full it is, and simulate the past before that.
+      Object.entries(saved.levels).forEach(([binId, level]) => {
+        if (level.historyAnchor) return;
+        const hours = Math.min(120, Math.max(0.3, level.landfill / (PART_RATE.landfill * fillSpeed(Number(binId)))));
+        level.emptiedAt = level.historyAnchor = busyHoursBefore(Date.now(), hours);
+        level.emptiedBy = null;
+      });
       return saved;
     }
   } catch {
@@ -164,6 +182,36 @@ function seededRandom(seed) {
 // Sensor readings
 // ---------------------------------------------------------------------------
 
+function startOfDay(t) {
+  return new Date(t).setHours(0, 0, 0, 0);
+}
+
+// Bins fill mostly during the day: 7 am to 7 pm counts fully, nights at 20%.
+function busyHoursUntil(t) {
+  const local = t - new Date(t).getTimezoneOffset() * 60000;
+  const day = Math.floor(local / DAY_MS);
+  const x = (local - day * DAY_MS) / HOUR_MS;
+  const inDay = x < 7 ? 0.2 * x : x < 19 ? 1.4 + (x - 7) : 13.4 + 0.2 * (x - 19);
+  return day * 14.4 + inDay;
+}
+
+function busyHours(from, to) {
+  return busyHoursUntil(to) - busyHoursUntil(from);
+}
+
+// The moment that is `hours` busy hours before `t`.
+function busyHoursBefore(t, hours) {
+  const target = busyHoursUntil(t) - hours;
+  let low = t - 40 * DAY_MS;
+  let high = t;
+  for (let i = 0; i < 40; i++) {
+    const mid = (low + high) / 2;
+    if (busyHoursUntil(mid) < target) low = mid;
+    else high = mid;
+  }
+  return high;
+}
+
 // Busy spots fill faster than quiet ones.
 function fillSpeed(binId) {
   return 0.4 + seededRandom(binId)() * 1.6;
@@ -189,12 +237,12 @@ function readSensors() {
     level.lastReading = Date.now();
 
     const speed = fillSpeed(bin.id);
-    level.landfill = Math.min(100, level.landfill + Math.random() * 0.25 * speed);
-    level.recycling = Math.min(100, level.recycling + Math.random() * 0.18 * speed);
-    level.compost = Math.min(100, level.compost + Math.random() * 0.1 * speed);
+    level.landfill = Math.min(100, level.landfill + Math.random() * 0.06 * speed);
+    level.recycling = Math.min(100, level.recycling + Math.random() * 0.045 * speed);
+    level.compost = Math.min(100, level.compost + Math.random() * 0.025 * speed);
 
     // In the demo, other workers empty some of the full bins on their own.
-    if (fullest(bin.id) >= 85 && Math.random() < 0.04) {
+    if (fullest(bin.id) >= 85 && Math.random() < 0.02) {
       emptyBin(bin.id, randomOtherWorker());
     }
   });
@@ -422,11 +470,13 @@ function showToast(message, action = null) {
 
 function emptyBin(binId, workerId) {
   const level = data.levels[binId];
+  const before = {};
+  COMPARTMENTS.forEach(({ key }) => (before[key] = Math.round(level[key])));
   COMPARTMENTS.forEach(({ key }) => (level[key] = 0));
   level.emptiedAt = Date.now();
   level.emptiedBy = workerId;
-  data.emptiedLog.unshift({ binId, workerId, at: Date.now() });
-  data.emptiedLog.length = Math.min(data.emptiedLog.length, 500);
+  data.emptiedLog.unshift({ binId, workerId, at: Date.now(), before });
+  data.emptiedLog.length = Math.min(data.emptiedLog.length, 2000);
 }
 
 function markEmptied(binId) {
@@ -579,6 +629,7 @@ function signIn(workerId) {
   binFilter = worker.role === "admin" ? "all" : "full";
   zoneFilter = myZoneId() || "all";
   mapFilters.zone = zoneFilter;
+  if (typeof resetReports === "function") resetReports();
   saveData();
   renderZoneSelects();
 
@@ -645,6 +696,7 @@ function showPage(page) {
   if (page !== "map") stopZoneEdit();
   if (page === "map") setupMap();
   if (page === "settings") renderSettings();
+  if (page === "history" && typeof openReports === "function") openReports();
   render();
 }
 
@@ -666,7 +718,7 @@ document.querySelector(".nav").addEventListener("click", (event) => {
 function render() {
     if (currentPage === "bins") renderBins();
     if (currentPage === "map") renderMap();
-    if (currentPage === "history") renderHistory();
+    if (currentPage === "history" && typeof refreshReports === "function") refreshReports();
     if (currentPage === "settings") renderLiveStatus();
 }
 
@@ -753,6 +805,7 @@ function cardHtml(bin) {
       <div class="bars">${bars}</div>
       <div class="card-buttons">
         <button type="button" class="button primary" data-action="empty" data-id="${bin.id}">Mark emptied</button>
+        <button type="button" class="button icon-button" data-action="history" data-id="${bin.id}" aria-label="Bin history" title="Bin history"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h16M7 16v-5M12 16V6M17 16v-8"/></svg></button>
         <button type="button" class="button icon-button" data-action="map" data-id="${bin.id}" aria-label="Show on map" title="Show on map"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg></button>
       </div>
     </article>
@@ -823,6 +876,10 @@ document.addEventListener("click", (event) => {
     if (wasTripDestination) showNextBinPrompt(binId);
   }
   if (button.dataset.action === "next-bin") goToNearestFullBin();
+  if (button.dataset.action === "history") {
+    map?.closePopup();
+    openBinHistory(binId);
+  }
   if (button.dataset.action === "directions") startDirections(binId);
   if (button.dataset.action === "stop-directions") stopDirections();
   if (button.dataset.action === "map") {
@@ -847,7 +904,14 @@ const MAP_STYLES = {
 const mapFilters = { search: "", compartment: "any", statuses: new Set(MAP_STATUSES), zone: "all" };
 const markerHtml = new Map();
 let markerGroup = null;
-let groupNearby = true;
+const GROUP_KEY = "tribin-grouped";
+let groupNearby = (() => {
+  try {
+    return localStorage.getItem(GROUP_KEY) !== "0";
+  } catch {
+    return true;
+  }
+})();
 let shownMarkers = new Set();
 let baseLayer = null;
 
@@ -980,6 +1044,7 @@ function popupHtml(bin) {
         <button type="button" class="button" data-action="directions" data-id="${bin.id}">Directions</button>
         <button type="button" class="button primary" data-action="empty" data-id="${bin.id}">Mark emptied</button>
       </div>
+      <button type="button" class="link-button" data-action="history" data-id="${bin.id}">See this bin's history</button>
     </div>
   `;
 }
@@ -1101,14 +1166,36 @@ document.querySelector("#mapStatuses").addEventListener("click", (event) => {
   renderMap();
 });
 
+function syncGroupButtons() {
+  document.querySelectorAll("[data-group]").forEach((button) => button.classList.toggle("active", (button.dataset.group === "on") === groupNearby));
+}
+
 function setGrouping(value) {
   groupNearby = value;
+  syncGroupButtons();
+  if (!map) return;
   map.removeLayer(markerGroup);
   markerGroup = makeMarkerGroup();
   shownMarkers = new Set();
   map.addLayer(markerGroup);
   renderMap();
 }
+
+syncGroupButtons();
+
+document.querySelector(".map-group").addEventListener("click", (event) => {
+  const button = event.target.closest("[data-group]");
+  if (!button) return;
+  const value = button.dataset.group === "on";
+  try {
+    localStorage.setItem(GROUP_KEY, value ? "1" : "0");
+  } catch {
+    // Only a convenience; grouping still works.
+  }
+  if (zoneEdit.active) zoneEdit.groupedBefore = value;
+  else if (value !== groupNearby) setGrouping(value);
+  showToast(value ? "Nearby bins are grouped into circles." : "Every bin is shown on its own.");
+});
 
 document.querySelector("#mapZone").addEventListener("change", (event) => {
   mapFilters.zone = event.target.value;
@@ -1547,47 +1634,6 @@ function locationErrorText(error) {
 }
 
 // Bin Collection History
-function renderHistory() {
-    const historyRows = document.querySelector("#historyRows");
-
-    // Show the most recent 50 collection events.
-    const events = [...data.emptiedLog]
-        .sort((a, b) => b.at - a.at)
-        .slice(0, 50);
-
-    if (events.length === 0) {
-        historyRows.innerHTML = `
-      <tr>
-        <td colspan="4">
-          No collection history available yet.
-        </td>
-      </tr>
-    `;
-        return;
-    }
-
-    historyRows.innerHTML = events.map((event) => {
-        const worker = data.workers.find(
-            (w) => w.id === event.workerId
-        );
-
-        const workerName = worker
-            ? worker.name
-            : "Unknown worker";
-
-        const date = new Date(event.at).toLocaleString();
-
-        return `
-      <tr>
-        <td>Bin ${event.binId}</td>
-        <td>${zoneTag(binZone(event.binId))}</td>
-        <td>${escapeHtml(workerName)}</td>
-        <td>${escapeHtml(date)}</td>
-      </tr>
-    `;
-    }).join("");
-}
-
 // ---------------------------------------------------------------------------
 // Settings page (admins only)
 // ---------------------------------------------------------------------------

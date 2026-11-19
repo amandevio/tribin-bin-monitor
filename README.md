@@ -11,7 +11,7 @@ connection is needed for the map.
 - **Go to nearest full bin**: one big button that finds the closest bin that
   needs emptying and starts walking directions to it. After you mark it
   emptied, it offers the next closest one.
-- **Simple layout**: four pages (Bins, Map, History, and Settings for
+- **Simple layout**: four pages (Bins, Map, Reports, and Settings for
   admins). On phones they sit as big tabs along the bottom of the screen.
 - **Sensor offline**: bins whose sensor has stopped reporting show in gray
   with the time of their last reading. Admins find them with the **Offline**
@@ -32,7 +32,22 @@ connection is needed for the map.
   you walk, and it tells you when you've arrived. (Your browser will ask for
   location permission the first time. Routes come from the free OpenStreetMap
   routing service at routing.openstreetmap.de.)
-- **History**: a log of recently emptied bins, with who emptied them and when.
+- **Reports**: everything about the bins in one place, for one zone or all of
+  them. Summary numbers (emptied today, this week, how full bins get before
+  they're emptied, how many need emptying now), a bar chart of bins emptied
+  per day, and a **bin history graph** that shows how full each part of a bin
+  was over the last 7 days, with dashed lines where it was emptied (hover for
+  exact numbers and who emptied it). It also has the most-emptied bins, bins
+  emptied per worker, a table of every bin, and the full collection history.
+  Open any bin's graph from the chart button on its row, the link in its map
+  popup, or by clicking it in a table.
+- **Downloads**: **Excel** gives a workbook with Summary, Bins, Collections,
+  Workers and hour-by-hour readings for the selected bin. **PDF** gives a
+  printable report with the charts and tables. Both follow the zone you picked.
+  Readings from before you first opened the dashboard are simulated demo data
+  until real sensors are connected.
+- **Group / ungroup**: the **Grouped / Ungrouped** switch on the map either
+  groups nearby bins into circles or shows every bin on its own.
 - **Live sensor**: Bin 3 (Test Bin) shows a real XIAO ESP32-C3 + A02YYUW
   sensor. The board publishes its distance reading over MQTT
   (broker.hivemq.com, topic `tribin/amandevio/bin/3`) and the dashboard turns
@@ -75,6 +90,7 @@ No password is needed in the demo.
 - `index.html`: page layout
 - `style.css`: colors and styling
 - `app.js`: all the logic (sign in, bins, map, workers)
+- `reports.js`: the Reports page, its charts, and the Excel / PDF downloads
 - `bins.js`: bin locations from the project spreadsheet
 
 ## Connecting real sensors

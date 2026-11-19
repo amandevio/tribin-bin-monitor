@@ -2178,3 +2178,420 @@ body.map-open .toast {
 .topbar .logo strong {
   color: var(--green);
 }
+
+/* ---------- Group / ungroup control on the map ---------- */
+
+.map-styles.map-group {
+  top: 64px;
+}
+
+/* ---------- Reports ---------- */
+
+.report-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px 16px;
+  margin-bottom: 16px;
+}
+
+.page-title {
+  font-size: 26px;
+}
+
+.report-head p {
+  margin: 2px 0 0;
+}
+
+.report-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.report-actions select {
+  width: auto;
+  min-width: 170px;
+}
+
+.download-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 9px 14px;
+}
+
+.download-button svg {
+  width: 17px;
+  height: 17px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.download-button:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+.card-sub {
+  margin: 2px 0 14px;
+  font-size: 13.5px;
+}
+
+.card-sub:empty {
+  display: none;
+}
+
+.stat-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.stat {
+  padding: 14px 16px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+}
+
+.stat-label {
+  display: block;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.stat-value {
+  display: block;
+  margin-top: 2px;
+  font-family: "Archivo", sans-serif;
+  font-size: 28px;
+  font-stretch: 112%;
+  font-weight: 800;
+  line-height: 1.15;
+  font-variant-numeric: tabular-nums;
+}
+
+.stat-note {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.stat-row.compact {
+  margin: 16px 0;
+}
+
+.stat-row.compact .stat {
+  padding: 10px 12px;
+  background: #faf8f1;
+}
+
+.stat-row.compact .stat-value {
+  font-size: 20px;
+}
+
+/* Charts */
+.chart {
+  position: relative;
+  width: 100%;
+  min-height: 60px;
+  touch-action: pan-y;
+}
+
+.chart svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.chart .col {
+  transition: opacity 0.15s;
+}
+
+.chart.dimmed .col:not(.on) {
+  opacity: 0.4;
+}
+
+.chart-hit {
+  position: absolute;
+  cursor: crosshair;
+}
+
+.chart-tip {
+  position: absolute;
+  z-index: 5;
+  min-width: 140px;
+  padding: 8px 11px;
+  color: white;
+  background: #16241c;
+  border-radius: 9px;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
+  font-size: 12.5px;
+  line-height: 1.5;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.chart-tip i {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  margin-right: 6px;
+  border-radius: 50%;
+}
+
+.chart-tip .tip-note {
+  margin-top: 4px;
+  padding-top: 4px;
+  color: rgba(255, 255, 255, 0.8);
+  border-top: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.chart-cross {
+  position: absolute;
+  width: 1px;
+  background: rgba(22, 36, 28, 0.35);
+  pointer-events: none;
+}
+
+.chart-dot {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  margin: -5px 0 0 -5px;
+  border: 2px solid var(--card);
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.chart-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  margin: 0 0 8px;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.chart-legend span {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.chart-legend i {
+  width: 16px;
+  height: 3px;
+  border-radius: 2px;
+}
+
+.chart-legend .legend-dashed {
+  width: 0;
+  height: 14px;
+  border-left: 1.5px dashed #8f978f;
+  border-radius: 0;
+}
+
+.bin-history-head select {
+  width: auto;
+  max-width: 340px;
+}
+
+#binPlace {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 10px;
+  margin: 2px 0 0;
+}
+
+/* Horizontal bar lists */
+.report-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0 20px;
+}
+
+.bar-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.bar-item {
+  display: grid;
+  grid-template-columns: minmax(0, 140px) 1fr 40px;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 5px 8px;
+  color: var(--text);
+  background: none;
+  border: 0;
+  border-radius: 8px;
+  font: inherit;
+  text-align: left;
+}
+
+button.bar-item {
+  cursor: pointer;
+}
+
+button.bar-item:hover {
+  background: #f1ede2;
+}
+
+.bar-name {
+  overflow: hidden;
+  font-size: 13.5px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bar-line {
+  height: 10px;
+  overflow: hidden;
+  background: #efebe0;
+  border-radius: 5px;
+}
+
+.bar-line span {
+  display: block;
+  height: 100%;
+  background: var(--green-light);
+  border-radius: 5px;
+}
+
+.bar-item b {
+  font-size: 13px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Tables */
+th.num,
+td.num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.data-table td,
+.data-table th {
+  white-space: nowrap;
+}
+
+.data-table .cell-location {
+  max-width: 260px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.clickable-rows tr {
+  cursor: pointer;
+}
+
+.clickable-rows tr:hover td {
+  background: #faf7ef;
+}
+
+.clickable-rows tr.selected td {
+  background: #e3eee7;
+}
+
+.show-more {
+  margin-top: 12px;
+}
+
+.demo-note {
+  margin: 0 0 8px;
+  color: var(--muted);
+  font-size: 12.5px;
+  text-align: center;
+}
+
+.link-button {
+  margin-top: 10px;
+  padding: 0;
+  color: var(--green-light);
+  background: none;
+  border: 0;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.link-button:hover {
+  text-decoration: underline;
+}
+
+.card-buttons {
+  grid-template-columns: auto auto auto;
+}
+
+@media (max-width: 700px) {
+  .map-styles.map-group {
+    top: 56px;
+  }
+
+  .stat-row {
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+
+  .stat-value {
+    font-size: 24px;
+  }
+
+  .report-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .report-actions {
+    width: 100%;
+  }
+
+  .report-actions select {
+    flex: 1 1 100%;
+  }
+
+  .download-button {
+    flex: 1;
+    justify-content: center;
+  }
+
+  .bin-history-head select {
+    width: 100%;
+    max-width: none;
+  }
+
+  .card-buttons {
+    grid-template-columns: 1fr auto auto;
+  }
+}
+
+#binHistoryCard td,
+#binHistoryCard th {
+  white-space: nowrap;
+}
+
+@media (max-width: 700px) {
+  .summary {
+    gap: 6px;
+  }
+
+  .summary-box {
+    gap: 6px;
+    padding: 6px 6px 6px 11px;
+    font-size: 13.5px;
+  }
+}
