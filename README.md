@@ -11,8 +11,22 @@ connection is needed for the map.
 - **Go to nearest full bin**: one big button that finds the closest bin that
   needs emptying and starts walking directions to it. After you mark it
   emptied, it offers the next closest one.
-- **Simple layout**: a sidebar with Home, Bins, Map, Reports, and Settings
-  (admins only). The Bins tab shows how many bins need emptying. On phones the
+- **Glass look, iPad friendly**: frosted, see-through panels over a soft
+  background. On touch screens every button is at least 44-48 px tall and text
+  boxes use 16 px text so iPads and iPhones don't zoom in. Layouts are tuned for
+  iPad in landscape (sidebar) and portrait (tabs at the bottom). Add it to the
+  iPad home screen (Share > Add to Home Screen) and it opens full screen like
+  an app.
+- **Bin details**: tap any bin (its name or bars on the Bins page, a map
+  popup, or the Home card) to open one sheet with big fill bars, Get
+  directions, battery and sensor info, and a 7-day graph. On phones and iPads
+  in portrait it slides up from the bottom.
+- **Tidy map**: the map opens zoomed to your zone. Zoomed out, bins are small
+  colored dots; zoomed in, they become mini tri-bins. Nearby bins are grouped
+  so they never pile up, and a group of bins at the same spot fans out when
+  tapped.
+- **Simple layout**: a sidebar with Home, Bins and Map for workers, plus
+  Reports and Settings for admins. The Bins tab shows how many bins need emptying. On phones the
   sidebar becomes big tabs along the bottom of the screen.
 - **Home**: the first page after signing in. Workers see their zone and
   admins see the whole campus. It shows the next bin to empty, with its fill
@@ -117,6 +131,7 @@ No password is needed in the demo.
 - `style.css`: colors and styling
 - `app.js`: all the logic (sign in, bins, map, workers)
 - `home.js`: the Home page
+- `sheet.js`: the bin details sheet
 - `reports.js`: the Reports page, its charts, and the Excel / PDF downloads
 - `bins.js`: bin locations from the project spreadsheet
 

@@ -49,6 +49,8 @@ const ICONS = {
   signOut: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3"/><path d="M10 17l5-5-5-5"/><path d="M15 12H4"/></svg>',
   user: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 20a8 8 0 0 1 16 0"/></svg>',
   arrow: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>',
+  close: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>',
+  info: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5"/><path d="M12 7.6v.2"/></svg>',
   battery: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2.5" y="7.5" width="16.5" height="9" rx="2"/><path d="M21.5 10.5v3"/><path d="M6 10.5v3"/></svg>',
 };
 
@@ -959,6 +961,7 @@ document.querySelector(".nav").addEventListener("click", (event) => {
 
 function render() {
     renderShell();
+    if (typeof refreshBinSheet === "function") refreshBinSheet();
     if (currentPage === "home" && typeof renderHome === "function") renderHome();
     if (currentPage === "bins") renderBins();
     if (currentPage === "map") renderMap();
@@ -1046,7 +1049,7 @@ function cardHtml(bin) {
 
   return `
     <article class="bin-card" data-id="${bin.id}">
-      <div class="card-info">
+      <div class="card-info" data-action="details" data-id="${bin.id}">
         <div class="card-top">
           <strong>Bin ${bin.id}${bin.id === LIVE.binId ? ' <span class="live-tag">LIVE</span>' : ""}</strong>
           <span class="badge"></span>
@@ -1055,7 +1058,7 @@ function cardHtml(bin) {
         <p class="card-location">${escapeHtml(bin.location)}</p>
         <p class="card-meta"></p>
       </div>
-      <div class="bars">${bars}</div>
+      <div class="bars" data-action="details" data-id="${bin.id}">${bars}</div>
       <div class="card-buttons">
         ${
           binFilter === "battery" && isLowBattery(bin.id)
@@ -1064,7 +1067,7 @@ function cardHtml(bin) {
               ? `<button type="button" class="button primary" data-action="directions" data-id="${bin.id}">${ICONS.nav}Directions</button>`
               : `<button type="button" class="button primary" data-action="empty" data-id="${bin.id}">${ICONS.check}Mark emptied</button>`
         }
-        <button type="button" class="button" data-action="history" data-id="${bin.id}">${ICONS.chart}History</button>
+        <button type="button" class="button" data-action="details" data-id="${bin.id}">${ICONS.info}Details</button>
         <button type="button" class="button" data-action="map" data-id="${bin.id}">${ICONS.map}Map</button>
       </div>
     </article>
@@ -1143,6 +1146,10 @@ document.addEventListener("click", (event) => {
     if (wasTripDestination) showNextBinPrompt(binId);
   }
   if (button.dataset.action === "next-bin") goToNearestFullBin();
+  if (button.dataset.action === "details") {
+    map?.closePopup();
+    openBinSheet(binId);
+  }
   if (button.dataset.action === "battery") {
     map?.closePopup();
     replaceBattery(binId);
@@ -1191,7 +1198,11 @@ let baseLayer = null;
 
 function setupMap() {
   if (map) {
-    setTimeout(() => map.invalidateSize(), 0);
+    setTimeout(() => {
+      map.invalidateSize();
+      // Someone new signed in, or the zone changed: show their bins.
+      if (mapFittedFor !== `${data.currentUserId}|${mapFilters.zone}`) fitMapToZone();
+    }, 0);
     return;
   }
   if (typeof L === "undefined") {
@@ -1206,7 +1217,7 @@ function setupMap() {
   // Without the grouping library, fall back to plain markers.
   if (typeof L.markerClusterGroup !== "function") {
     groupNearby = false;
-    document.querySelector("#groupRow").hidden = true;
+    document.querySelector(".map-group").hidden = true;
   }
   markerGroup = makeMarkerGroup();
   map.addLayer(markerGroup);
@@ -1220,9 +1231,31 @@ function setupMap() {
     mapMarkers.set(bin.id, marker);
   });
 
+  // Zoomed out, bins are small dots; zoomed in, they become mini tri-bins.
+  map.on("zoomend", () => renderMap());
   renderMap();
-  map.fitBounds(L.latLngBounds(allBins.map((bin) => [bin.latitude, bin.longitude])), { padding: [40, 40] });
-  setTimeout(() => map.invalidateSize(), 0);
+  fitMapToZone();
+  setTimeout(() => {
+    map.invalidateSize();
+    fitMapToZone();
+  }, 0);
+}
+
+// Show the bins of the chosen zone (your zone, to start), clear of the panel.
+let mapFittedFor = "";
+
+function fitMapToZone() {
+  if (!map) return;
+  mapFittedFor = `${data.currentUserId}|${mapFilters.zone}`;
+  const bins = allBins.filter((bin) => inZone(bin.id, mapFilters.zone));
+  const list = bins.length ? bins : allBins;
+  const phone = window.innerWidth <= 700;
+  const panelOpen = !document.querySelector("#mapDrawer").classList.contains("closed");
+  map.fitBounds(L.latLngBounds(list.map((bin) => [bin.latitude, bin.longitude])), {
+    paddingTopLeft: [phone || !panelOpen ? 30 : 350, 40],
+    paddingBottomRight: [40, phone ? 170 : 40],
+    maxZoom: 18,
+  });
 }
 
 function setMapStyle(name) {
@@ -1243,8 +1276,11 @@ function makeMarkerGroup() {
   return L.markerClusterGroup({
     iconCreateFunction: clusterIcon,
     showCoverageOnHover: false,
-    maxClusterRadius: 44,
-    disableClusteringAtZoom: 18,
+    // Group more when zoomed out, so circles never pile on top of each other.
+    // Fully zoomed in, only bins that would overlap stay grouped, and tapping
+    // the group fans them out.
+    maxClusterRadius: (zoom) => (zoom >= 18 ? 30 : zoom >= 17 ? 50 : 80),
+    spiderfyOnMaxZoom: true,
   });
 }
 
@@ -1269,6 +1305,7 @@ function markerIconHtml(bin) {
     const extra = zone ? (zone.id === zoneEdit.zoneId ? " pin-zone pin-selected-zone" : " pin-zone") : " pin-zone pin-nozone";
     return `<div class="bin-pin pin-${mapStatus(bin)}${extra}"${zone ? ` style="--zone: ${zone.color}"` : ""}>${bars}</div>`;
   }
+  if (map && map.getZoom() < 17) return `<div class="dot-wrap"><div class="bin-dot dot-${mapStatus(bin)}"></div></div>`;
   return `<div class="bin-pin pin-${mapStatus(bin)}">${bars}</div>`;
 }
 
@@ -1283,7 +1320,7 @@ function clusterIcon(cluster) {
   const almost = full + (counts.almost / children.length) * 100;
   const ok = almost + (counts.ok / children.length) * 100;
   const ring = `conic-gradient(var(--full) 0 ${full}%, var(--almost) ${full}% ${almost}%, var(--ok) ${almost}% ${ok}%, var(--offline) ${ok}% 100%)`;
-  const size = children.length >= 20 ? 50 : children.length >= 8 ? 44 : 38;
+  const size = children.length >= 20 ? 46 : children.length >= 8 ? 40 : 34;
 
   return L.divIcon({
     className: "",
@@ -1324,7 +1361,7 @@ function popupHtml(bin) {
         <button type="button" class="button${data.settings.autoEmpty && !offline ? "" : " primary"}" data-action="empty" data-id="${bin.id}" title="Only needed if the sensor missed it">Mark emptied</button>
       </div>
       ${isLowBattery(bin.id) ? `<button type="button" class="button full-width popup-battery-button" data-action="battery" data-id="${bin.id}">${ICONS.battery}Battery replaced</button>` : ""}
-      <button type="button" class="link-button" data-action="history" data-id="${bin.id}">See this bin's history</button>
+      <button type="button" class="link-button" data-action="details" data-id="${bin.id}">More about this bin</button>
     </div>
   `;
 }
@@ -1343,7 +1380,16 @@ function renderMap() {
     const html = markerIconHtml(bin);
     if (markerHtml.get(bin.id) !== html) {
       markerHtml.set(bin.id, html);
-      marker.setIcon(L.divIcon({ className: "", html, iconSize: [28, 26], iconAnchor: [14, 13], popupAnchor: [0, -12] }));
+      const dot = html.startsWith('<div class="dot-wrap"');
+      marker.setIcon(
+        L.divIcon({
+          className: "",
+          html,
+          iconSize: dot ? [22, 22] : [28, 26],
+          iconAnchor: dot ? [11, 11] : [14, 13],
+          popupAnchor: dot ? [0, -10] : [0, -12],
+        })
+      );
       iconsChanged = true;
     }
 
@@ -1480,6 +1526,7 @@ document.querySelector(".map-group").addEventListener("click", (event) => {
 document.querySelector("#mapZone").addEventListener("change", (event) => {
   mapFilters.zone = event.target.value;
   renderMap();
+  fitMapToZone();
 });
 
 // ---------------------------------------------------------------------------

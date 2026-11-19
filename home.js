@@ -101,20 +101,22 @@ function heroHtml(scope) {
             ? `<p class="hero-auto">${ICONS.check}It's marked emptied on its own when the sensor sees it's empty.</p>`
             : `<button type="button" class="button on-dark" data-action="empty" data-id="${bin.id}">${ICONS.check}Mark emptied</button>`
         }
-        <button type="button" class="text-link" data-action="history" data-id="${bin.id}">See its history</button>
+        <button type="button" class="text-link" data-action="details" data-id="${bin.id}">More about this bin</button>
       </div>
     </div>
   `;
 }
 
 function tileHtml(kind, icon, value, label, go) {
-  return `
-    <button type="button" class="tile tile-${kind}" data-home-go="${go}">
+  const inner = `
       <span class="tile-icon">${icon}</span>
       <span class="tile-value">${value}</span>
       <span class="tile-label">${label}</span>
-    </button>
   `;
+  // No link (go = null) for numbers that have no page to open.
+  return go
+    ? `<button type="button" class="tile tile-${kind}" data-home-go="${go}">${inner}</button>`
+    : `<div class="tile tile-${kind} tile-static">${inner}</div>`;
 }
 
 function queueHtml(scope) {
@@ -130,7 +132,7 @@ function queueHtml(scope) {
       return `
         <div class="queue-item">
           <span class="queue-rank rank-${binStatus(bin.id)}">${i + 1}</span>
-          <button type="button" class="queue-main" data-action="map" data-id="${bin.id}" title="Show on map">
+          <button type="button" class="queue-main" data-action="details" data-id="${bin.id}" title="Bin details">
             <strong>Bin ${bin.id}</strong>
             <span>${escapeHtml(bin.location)}</span>
           </button>
@@ -232,7 +234,7 @@ function renderHome() {
     [
       tileHtml("full", ICONS.alert, counts.full, "Need emptying", "full"),
       tileHtml("almost", ICONS.clock, counts.almost, "Almost full", "almost"),
-      tileHtml("ok", ICONS.check, emptiedToday, "Emptied today", "reports"),
+      tileHtml("ok", ICONS.check, emptiedToday, "Emptied today", isAdmin() ? "reports" : null),
       isAdmin()
         ? tileHtml("offline", ICONS.wifiOff, counts.offline, "Sensors offline", "offline")
         : tileHtml("battery", ICONS.battery, lowBattery.length, "Low battery", "battery"),

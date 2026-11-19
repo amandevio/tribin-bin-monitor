@@ -3834,3 +3834,629 @@ td.battery-low {
   color: #c2410c;
   background: #ffedd5;
 }
+
+/* =========================================================================
+   Glass look: frosted, see-through panels over a soft colored background
+   ========================================================================= */
+
+:root {
+  --bg: #e9f0eb;
+  --card: rgba(255, 255, 255, 0.72);
+  --line: rgba(23, 38, 30, 0.09);
+  --hover: rgba(255, 255, 255, 0.55);
+  --green-soft: rgba(31, 138, 91, 0.14);
+  --glass: rgba(255, 255, 255, 0.62);
+  --glass-strong: rgba(255, 255, 255, 0.8);
+  --glass-border: rgba(255, 255, 255, 0.78);
+  --glass-edge: rgba(23, 38, 30, 0.1);
+  --glass-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7), 0 12px 32px -16px rgba(16, 42, 30, 0.22);
+  --blur: saturate(170%) blur(22px);
+  --shadow: var(--glass-shadow);
+}
+
+/* Soft color washes behind everything (fixed, so it works on iPad too) */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(900px 700px at -5% -10%, rgba(127, 200, 160, 0.55) 0%, transparent 60%),
+    radial-gradient(800px 650px at 105% 0%, rgba(214, 200, 150, 0.5) 0%, transparent 58%),
+    radial-gradient(900px 700px at 60% 110%, rgba(150, 200, 215, 0.45) 0%, transparent 60%),
+    radial-gradient(600px 500px at 30% 55%, rgba(255, 255, 255, 0.6) 0%, transparent 70%),
+    var(--bg);
+}
+
+/* Cards: see-through white with a bright edge */
+.card,
+.tile,
+.stat,
+.zone-card,
+.bin-card,
+.summary-box,
+.home-alert,
+.empty,
+.demo-account,
+.preview-card {
+  background: var(--glass);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-shadow);
+}
+
+.bin-card {
+  border-color: var(--glass-border);
+}
+
+.home-alert {
+  background: rgba(255, 244, 232, 0.7);
+  border-color: rgba(254, 215, 170, 0.9);
+}
+
+.stat-row.compact .stat {
+  background: rgba(255, 255, 255, 0.5);
+}
+
+/* Bars and tracks read better slightly darker on glass */
+.bar-track,
+.bar-line,
+.hero-track,
+.summary-number {
+  background: rgba(23, 38, 30, 0.08);
+}
+
+.hero-track {
+  background: rgba(255, 255, 255, 0.18);
+}
+
+/* Frosted bars that float over content */
+.sidebar,
+.topbar {
+  background: rgba(255, 255, 255, 0.55);
+  -webkit-backdrop-filter: var(--blur);
+  backdrop-filter: var(--blur);
+  border-color: var(--glass-border);
+}
+
+.user-card {
+  background: rgba(255, 255, 255, 0.55);
+  border: 1px solid var(--glass-border);
+}
+
+.nav button.active {
+  background: rgba(31, 138, 91, 0.14);
+  box-shadow: inset 0 0 0 1px rgba(31, 138, 91, 0.12);
+}
+
+/* Inputs and buttons */
+input,
+select {
+  background: rgba(255, 255, 255, 0.78);
+  border-color: var(--glass-edge);
+}
+
+.button {
+  background: rgba(255, 255, 255, 0.72);
+  border-color: var(--glass-edge);
+}
+
+.button:hover {
+  background: rgba(255, 255, 255, 0.92);
+}
+
+.button.primary {
+  background: linear-gradient(180deg, #0b5a3c 0%, #043927 100%);
+  border-color: #043927;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.15), 0 6px 16px -8px rgba(4, 57, 39, 0.6);
+}
+
+.button.danger {
+  color: var(--full);
+}
+
+.tabs {
+  background: rgba(255, 255, 255, 0.45);
+  border: 1px solid var(--glass-border);
+}
+
+.tabs button.active {
+  background: rgba(255, 255, 255, 0.92);
+}
+
+.summary-box.selected {
+  background: linear-gradient(180deg, #0b5a3c 0%, #043927 100%);
+  border-color: #043927;
+}
+
+/* The big "next bin" card: deep green glass */
+.home-hero {
+  background:
+    radial-gradient(500px 300px at 85% 0%, rgba(127, 224, 176, 0.22) 0%, transparent 60%),
+    linear-gradient(135deg, rgba(4, 57, 39, 0.95) 0%, rgba(11, 90, 60, 0.9) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12), 0 24px 48px -24px rgba(4, 57, 39, 0.65);
+}
+
+.home-hero.all-clear {
+  background: rgba(226, 243, 234, 0.75);
+  border-color: var(--glass-border);
+}
+
+/* Map panels, popups and the zone editor */
+.map-panel,
+.map-styles,
+.map-legend,
+.directions-panel,
+.drawer-tab {
+  background: rgba(255, 255, 255, 0.7);
+  -webkit-backdrop-filter: var(--blur);
+  backdrop-filter: var(--blur);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-shadow);
+}
+
+.drawer-tab {
+  border-left: 0;
+}
+
+.leaflet-popup-content-wrapper,
+.leaflet-popup-tip {
+  background: rgba(255, 255, 255, 0.86);
+  -webkit-backdrop-filter: var(--blur);
+  backdrop-filter: var(--blur);
+}
+
+.leaflet-popup-content-wrapper {
+  border: 1px solid var(--glass-border);
+  border-radius: 18px;
+  box-shadow: 0 16px 40px -16px rgba(16, 42, 30, 0.4);
+}
+
+.status-toggle {
+  background: rgba(255, 255, 255, 0.6);
+}
+
+/* Messages and dialogs */
+.toast {
+  background: rgba(10, 36, 25, 0.86);
+  -webkit-backdrop-filter: var(--blur);
+  backdrop-filter: var(--blur);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+dialog {
+  background: rgba(255, 255, 255, 0.84);
+  -webkit-backdrop-filter: var(--blur);
+  backdrop-filter: var(--blur);
+  border: 1px solid var(--glass-border);
+  box-shadow: 0 30px 70px -20px rgba(16, 42, 30, 0.45);
+}
+
+dialog::backdrop {
+  background: rgba(10, 30, 20, 0.28);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+}
+
+/* Sign-in screen on glass */
+.signin {
+  background: transparent;
+}
+
+.signin-panel {
+  background: rgba(255, 255, 255, 0.5);
+  -webkit-backdrop-filter: var(--blur);
+  backdrop-filter: var(--blur);
+}
+
+/* Divider that works on see-through backgrounds */
+.divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.divider::before,
+.divider::after {
+  content: "";
+  position: static;
+  flex: 1;
+  border-top: 1px solid var(--line);
+}
+
+.divider span {
+  padding: 0;
+  background: none;
+}
+
+/* ---------- Tapping bins ---------- */
+
+.card-info,
+.bin-card .bars {
+  cursor: pointer;
+}
+
+.bin-card:has(.card-info:hover) {
+  border-color: rgba(255, 255, 255, 0.95);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8), 0 16px 36px -16px rgba(16, 42, 30, 0.3);
+}
+
+/* ---------- Map: dots when zoomed out, mini bins when zoomed in ---------- */
+
+.dot-wrap {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+}
+
+.bin-dot {
+  width: 14px;
+  height: 14px;
+  border: 2.5px solid white;
+  border-radius: 50%;
+  box-shadow: 0 1px 5px rgba(0, 0, 0, 0.35);
+}
+
+.bin-dot.dot-full {
+  width: 18px;
+  height: 18px;
+  box-shadow: 0 0 0 4px rgba(207, 68, 54, 0.25), 0 1px 5px rgba(0, 0, 0, 0.35);
+}
+
+.cluster-pin {
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
+}
+
+/* ---------- Bin details sheet ---------- */
+
+dialog.sheet {
+  width: min(560px, calc(100vw - 32px));
+  max-height: min(90vh, 920px);
+  padding: 0;
+  overflow-y: auto;
+  border-radius: 26px;
+  background: rgba(255, 255, 255, 0.86);
+  overscroll-behavior: contain;
+}
+
+dialog.sheet[open] {
+  animation: sheet-in 0.25s ease-out;
+}
+
+@keyframes sheet-in {
+  from {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  dialog.sheet[open] {
+    animation: none;
+  }
+}
+
+.sheet-grabber {
+  display: none;
+  width: 44px;
+  height: 5px;
+  margin: 10px auto 0;
+  background: rgba(23, 38, 30, 0.2);
+  border-radius: 3px;
+}
+
+.sheet-inner {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: 22px 24px 24px;
+}
+
+#sheetHead {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.sheet-title h2 {
+  margin: 8px 0 2px;
+  font-size: 30px;
+  letter-spacing: -0.02em;
+}
+
+.sheet-title p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 15px;
+}
+
+.sheet-badges {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.sheet-close {
+  margin: -6px -8px 0 0;
+  background: rgba(255, 255, 255, 0.6);
+}
+
+.sheet-close svg {
+  stroke-width: 2.4;
+}
+
+#sheetLevels {
+  display: grid;
+  gap: 12px;
+}
+
+.sheet-level-top {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 6px;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.sheet-level-top b {
+  font-size: 17px;
+  font-variant-numeric: tabular-nums;
+}
+
+.sheet-track {
+  height: 14px;
+  overflow: hidden;
+  background: rgba(23, 38, 30, 0.08);
+  border-radius: 7px;
+}
+
+.sheet-track i {
+  display: block;
+  height: 100%;
+  border-radius: 7px;
+  transition: width 0.6s ease;
+}
+
+#sheetFacts {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.sheet-fact {
+  padding: 12px 14px;
+  background: rgba(255, 255, 255, 0.6);
+  border: 1px solid var(--glass-border);
+  border-radius: 14px;
+}
+
+.sheet-fact span {
+  display: block;
+  color: var(--muted);
+  font-size: 12.5px;
+  font-weight: 600;
+}
+
+.sheet-fact b {
+  display: block;
+  margin-top: 2px;
+  font-size: 14.5px;
+}
+
+.sheet-label {
+  margin: 0 0 8px;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+#sheetActions {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 10px;
+}
+
+.button.big {
+  min-height: 52px;
+  font-size: 16px;
+  border-radius: 14px;
+}
+
+.battery-action {
+  color: #b23c0a;
+  border-color: #fed7aa;
+}
+
+.sheet-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 2px 0 0;
+  color: var(--muted);
+  font-size: 13.5px;
+}
+
+.sheet-note svg {
+  flex-shrink: 0;
+  width: 17px;
+  height: 17px;
+  margin-top: 1px;
+  color: var(--ok);
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+#sheetActions .text-link {
+  align-self: center;
+}
+
+/* Phones and iPads in portrait: a sheet that slides up from the bottom */
+@media (max-width: 860px) {
+  dialog.sheet {
+    width: 100%;
+    max-width: 100%;
+    max-height: 92vh;
+    margin: auto 0 0;
+    border-radius: 26px 26px 0 0;
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  dialog.sheet[open] {
+    animation-name: sheet-up;
+  }
+
+  .sheet-grabber {
+    display: block;
+  }
+
+  .sheet-inner {
+    max-width: 620px;
+    margin: 0 auto;
+  }
+}
+
+@keyframes sheet-up {
+  from {
+    transform: translateY(100%);
+  }
+}
+
+/* ---------- Touch screens (iPad, phones): bigger, easier targets ---------- */
+
+button,
+.button,
+[data-action],
+.nav button,
+.demo-account {
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+.nav button,
+.summary-box,
+.tabs button,
+.button {
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+@media (pointer: coarse) {
+  body {
+    font-size: 16px;
+  }
+
+  /* 16px stops iPad/iPhone from zooming in when a box is tapped */
+  input,
+  select {
+    min-height: 48px;
+    font-size: 16px;
+  }
+
+  .button {
+    min-height: 46px;
+    padding-right: 16px;
+    padding-left: 16px;
+  }
+
+  .button.small {
+    min-height: 42px;
+  }
+
+  .card-buttons .button {
+    min-height: 48px;
+  }
+
+  .summary-box {
+    min-height: 46px;
+    padding: 10px 14px;
+  }
+
+  .tabs button {
+    min-height: 44px;
+  }
+
+  .nav button {
+    min-height: 52px;
+  }
+
+  .plain-icon {
+    width: 44px;
+    height: 44px;
+  }
+
+  .text-link {
+    padding: 10px 2px;
+  }
+
+  .queue-item {
+    padding: 14px 0;
+  }
+
+  .status-toggle {
+    min-height: 44px;
+  }
+
+  .map-styles button {
+    min-height: 40px;
+    padding: 9px 14px;
+  }
+
+  .switch {
+    width: 52px;
+    height: 30px;
+  }
+
+  .switch::after {
+    width: 24px;
+    height: 24px;
+  }
+
+  .switch:checked::after {
+    transform: translateX(22px);
+  }
+
+  .leaflet-touch .leaflet-bar a {
+    width: 44px;
+    height: 44px;
+    line-height: 44px;
+  }
+}
+
+/* No hover on touch screens: don't leave cards "lifted" after a tap */
+@media (hover: none) {
+  .tile:hover,
+  .zone-card:hover {
+    transform: none;
+  }
+}
+
+/* iPad in landscape: a slightly slimmer sidebar leaves more room */
+@media (min-width: 861px) and (max-width: 1180px) {
+  .sidebar {
+    width: 220px;
+  }
+
+  main {
+    padding: 28px 28px 48px;
+  }
+}
+
+/* Safe areas (home bar, rounded corners) when added to the home screen */
+.topbar {
+  padding-top: max(10px, env(safe-area-inset-top));
+}
+
+.tile-static {
+  cursor: default;
+}
+
+.tile-static:hover {
+  transform: none;
+}

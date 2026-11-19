@@ -2,7 +2,16 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#043927" />
+    <!-- Add to Home Screen on iPad / iPhone: opens full screen like an app -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="Tribin" />
+    <link rel="icon" href="icon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="icon-180.png" />
+    <link rel="manifest" href="manifest.webmanifest" />
     <title>Tribin · Sac State Bin Monitor</title>
 
     <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -13,7 +22,7 @@
     />
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
-    <link rel="stylesheet" href="style.css?v=17" />
+    <link rel="stylesheet" href="style.css?v=18" />
   </head>
 
   <body>
@@ -91,7 +100,7 @@
           <button type="button" data-page="home"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 11l8-7 8 7v8a1 1 0 0 1-1 1h-4v-6h-6v6H5a1 1 0 0 1-1-1z"/></svg><span>Home</span></button>
           <button type="button" data-page="bins"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></svg><span>Bins</span><span id="navBadge" class="nav-badge" hidden>0</span></button>
           <button type="button" data-page="map"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg><span>Map</span></button>
-          <button type="button" data-page="history"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h16M7 16v-5M12 16V6M17 16v-8"/></svg><span>Reports</span></button>
+          <button type="button" data-page="history" data-admin-only><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h16M7 16v-5M12 16V6M17 16v-8"/></svg><span>Reports</span></button>
           <button type="button" data-page="settings" data-admin-only><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h9M17 6h3M4 12h3M11 12h9M4 18h11M19 18h1"/><circle cx="15" cy="6" r="2"/><circle cx="9" cy="12" r="2"/><circle cx="17" cy="18" r="2"/></svg><span>Settings</span></button>
         </nav>
 
@@ -142,7 +151,7 @@
                   <div class="card">
                       <div class="card-head">
                           <h2>Recent activity</h2>
-                          <button type="button" class="text-link" data-home-go="reports">Open reports</button>
+                          <button type="button" class="text-link" data-home-go="reports" data-admin-only>Open reports</button>
                       </div>
                       <div id="homeActivity"></div>
                   </div>
@@ -496,14 +505,36 @@
       </form>
     </dialog>
 
+    <!-- Bin details: tap any bin to open -->
+    <dialog id="binSheet" class="sheet" aria-label="Bin details">
+      <div class="sheet-grabber" aria-hidden="true"></div>
+      <div class="sheet-inner">
+        <div id="sheetHead"></div>
+        <div id="sheetLevels"></div>
+        <div id="sheetActions"></div>
+        <div id="sheetFacts"></div>
+        <div>
+          <p class="sheet-label">Last 7 days</p>
+          <div class="chart-legend">
+            <span><i style="background: #2a78d6"></i>Recycle</span>
+            <span><i style="background: #eb6834"></i>Landfill</span>
+            <span><i style="background: #1baf7a"></i>Compost</span>
+            <span><i class="legend-dashed"></i>Emptied</span>
+          </div>
+          <div id="sheetChart" class="chart"></div>
+        </div>
+      </div>
+    </dialog>
+
     <div id="toast" class="toast" hidden></div>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
     <script src="https://unpkg.com/mqtt@5.16.1/dist/mqtt.min.js"></script>
     <script src="bins.js"></script>
-    <script src="app.js?v=17"></script>
-    <script src="reports.js?v=17"></script>
-    <script src="home.js?v=17"></script>
+    <script src="app.js?v=18"></script>
+    <script src="reports.js?v=18"></script>
+    <script src="home.js?v=18"></script>
+    <script src="sheet.js?v=18"></script>
   </body>
 </html>
