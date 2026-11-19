@@ -3733,3 +3733,99 @@ td.battery-low {
     zoom: 1.35;
   }
 }
+
+/* ---------- Automatic "emptied" ---------- */
+
+.auto-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: -8px 0 16px;
+  color: var(--muted);
+  font-size: 13.5px;
+}
+
+.auto-note svg,
+.hero-auto svg,
+.sensor-avatar svg {
+  flex-shrink: 0;
+  width: 17px;
+  height: 17px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.auto-note svg {
+  margin-top: 1px;
+  color: var(--ok);
+}
+
+.hero-auto {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  max-width: 230px;
+  margin: 0;
+  color: rgba(255, 255, 255, 0.82);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.hero-auto svg {
+  margin-top: 1px;
+  color: #7fe0b0;
+}
+
+.sensor-avatar {
+  color: var(--ok);
+  background: var(--ok-soft);
+}
+
+.directions-auto {
+  margin: 0 0 10px;
+  color: var(--muted);
+  font-size: 13.5px;
+}
+
+.auto-empty-row {
+  gap: 24px;
+  margin: 12px 0 0;
+}
+
+.auto-empty-row b {
+  display: block;
+  font-size: 15px;
+}
+
+.auto-empty-row small {
+  display: block;
+  margin-top: 2px;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 1.5;
+}
+
+.auto-empty-row .switch {
+  flex-shrink: 0;
+}
+
+@media (max-width: 1100px) {
+  .hero-auto {
+    max-width: none;
+    align-self: center;
+  }
+}
+
+/* On the map, messages sit on the right so they never cover the left panel. */
+@media (min-width: 701px) {
+  body.map-open .toast {
+    top: calc(var(--topbar-height, 0px) + 124px);
+    right: 24px;
+    left: auto;
+    transform: none;
+  }
+}

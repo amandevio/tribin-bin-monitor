@@ -24,6 +24,15 @@ connection is needed for the map.
 - **Sensor offline**: bins whose sensor has stopped reporting show in gray
   with the time of their last reading. Admins find them with the **Offline**
   tab on the Bins page or the status filter on the map.
+- **Automatic emptying**: workers don't have to tap anything. When a sensor
+  sees a bin drop from full (40%+) to nearly empty (15% or less) on two
+  readings in a row, the bin is marked emptied. It's credited to the worker
+  who had directions to it, or to the zone's worker. A worker heading to that
+  bin is shown the next closest full bin right away. The real sensor on Bin 3
+  works the same way: fill the test container, empty it, and it logs itself.
+  **Mark emptied** is still there for offline sensors, and admins can turn
+  automatic detection off in Settings > Alerts & sensor. Reports and downloads
+  show whether each collection was recorded by the sensor or a button press.
 - **Low battery**: every sensor shows its battery level. Sensors at or below
   the low-battery level (20% to start; change it in Settings > Alerts &
   sensor) get an orange **Low battery** tag and appear under the **Low
@@ -35,9 +44,9 @@ connection is needed for the map.
   simulated in the demo; the live test sensor runs on USB power.
 - **Bins**: every bin as a card with three fill bars. Tap **To empty**,
   **Almost full**, or **All** at the top to switch lists. Fullest bins come
-  first, or nearest first once location is allowed. Each bin has **Mark
-  emptied**, **History** and **Map** buttons, and **Undo** appears for a few
-  seconds in case of a wrong tap.
+  first, or nearest first once location is allowed. Each bin has
+  **Directions**, **History** and **Map** buttons (offline sensors get **Mark
+  emptied** instead), and **Undo** appears for a few seconds after any change.
 - **Map**: every bin as a mini tri-bin marker with one bar per compartment
   (red = needs emptying, yellow = almost full, green = OK). Nearby bins are
   grouped into circles whose ring shows how many are full. Search, filter by

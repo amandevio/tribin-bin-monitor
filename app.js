@@ -92,7 +92,7 @@ function defaultData() {
   seedBattery(levels);
 
   const d = {
-    settings: { fullAt: 80, almostAt: 50, liveDepthCm: 60, lowBatteryAt: 20 },
+    settings: { fullAt: 80, almostAt: 50, liveDepthCm: 60, lowBatteryAt: 20, autoEmpty: true },
     workers: [
       { id: 1, name: "Jordan Reyes", email: "jordan.reyes@csus.edu", role: "admin" },
       { id: 2, name: "Maria Lopez", email: "maria.lopez@csus.edu", role: "worker" },
@@ -155,6 +155,7 @@ function loadData() {
       });
       saved.settings.liveDepthCm ??= 60;
       saved.settings.lowBatteryAt ??= 20;
+      saved.settings.autoEmpty ??= true;
       // Data saved before batteries were tracked gets battery levels now.
       if (!Object.values(saved.levels).some((level) => "battery" in level)) seedBattery(saved.levels);
       saved.batteryLog ??= [];
@@ -295,15 +296,20 @@ function readSensors() {
     if (!level.online) return;
     level.lastReading = Date.now();
 
+    const before = { recycling: level.recycling, landfill: level.landfill, compost: level.compost };
     const speed = fillSpeed(bin.id);
     level.landfill = Math.min(100, level.landfill + Math.random() * 0.06 * speed);
     level.recycling = Math.min(100, level.recycling + Math.random() * 0.045 * speed);
     level.compost = Math.min(100, level.compost + Math.random() * 0.025 * speed);
 
-    // In the demo, other workers empty some of the full bins on their own.
+    // In the demo, crews empty some of the full bins without touching the
+    // app. The sensor sees the drop and the bin is marked emptied by itself.
+    // (With automatic detection off, they tap "Mark emptied" instead.)
     if (fullest(bin.id) >= 85 && Math.random() < 0.02) {
-      emptyBin(bin.id, randomOtherWorker());
+      if (data.settings.autoEmpty) COMPARTMENTS.forEach(({ key }) => (level[key] = Math.random() * 3));
+      else emptyBin(bin.id, randomOtherWorker());
     }
+    detectEmptying(bin.id, before);
   });
 }
 
@@ -339,7 +345,79 @@ function applyLiveReading() {
       level.liveStarted = true;
     }
   }
+  const before = { recycling: level.recycling, landfill: level.landfill, compost: level.compost };
+  const wasStarted = level.liveStarted;
   level[LIVE.key] = distanceToPercent(liveReading.distanceCm, data.settings.liveDepthCm);
+  if (fresh && wasStarted) detectEmptying(LIVE.binId, { ...level, [LIVE.key]: before[LIVE.key] });
+}
+
+// ---------------------------------------------------------------------------
+// Automatic "emptied": a big drop in fill level means someone emptied the bin
+// ---------------------------------------------------------------------------
+
+const EMPTY_FROM = 40; // a part has to have been at least this full...
+const EMPTY_TO = 15; // ...and drop to this or less
+const EMPTY_DROP = 30; // by at least this many points
+
+const roundLevels = (levels) => Object.fromEntries(COMPARTMENTS.map(({ key }) => [key, Math.round(levels[key])]));
+
+// Compare the new reading with the one before it. A drop has to show up on
+// two readings in a row, so one glitchy reading doesn't count.
+function detectEmptying(binId, before) {
+  const level = data.levels[binId];
+  if (!data.settings.autoEmpty || (level.ignoreDropUntil && Date.now() < level.ignoreDropUntil)) {
+    delete level.pendingEmpty;
+    return;
+  }
+  if (level.pendingEmpty) {
+    const peak = level.pendingEmpty.before;
+    const stillLow = COMPARTMENTS.some(({ key }) => peak[key] >= EMPTY_FROM && level[key] <= EMPTY_TO + 5);
+    delete level.pendingEmpty;
+    if (stillLow) recordAutoEmptied(binId, peak);
+    return;
+  }
+  const dropped = COMPARTMENTS.some(
+    ({ key }) => before[key] >= EMPTY_FROM && level[key] <= EMPTY_TO && before[key] - level[key] >= EMPTY_DROP
+  );
+  if (dropped) level.pendingEmpty = { at: Date.now(), before: roundLevels(before) };
+}
+
+// Who to credit when the sensor notices an emptying: the person who had
+// directions to that bin, or the zone's only worker. Otherwise nobody.
+function autoCredit(binId) {
+  if (trip?.binId === binId && data.currentUserId) return data.currentUserId;
+  const crew = data.workers.filter((w) => w.role === "worker" && w.zoneId && w.zoneId === data.binZones[binId]);
+  return crew.length === 1 ? crew[0].id : null;
+}
+
+function recordAutoEmptied(binId, before) {
+  const level = data.levels[binId];
+  const wasTrip = trip?.binId === binId;
+  const previous = { emptiedAt: level.emptiedAt, emptiedBy: level.emptiedBy, emptiedAuto: level.emptiedAuto };
+  const entry = { binId, workerId: autoCredit(binId), at: Date.now(), before, auto: true };
+  level.emptiedAt = entry.at;
+  level.emptiedBy = entry.workerId;
+  level.emptiedAuto = true;
+  data.emptiedLog.unshift(entry);
+  data.emptiedLog.length = Math.min(data.emptiedLog.length, 2000);
+  saveData();
+
+  // Only interrupt people when it matters: the bin they were heading to, or
+  // the real sensor in the demo.
+  if (!currentUser() || !(wasTrip || binId === LIVE.binId)) return;
+  if (wasTrip) showNextBinPrompt(binId);
+  showToast(`Bin ${binId} emptied. The sensor noticed, so there's nothing to tap.`, {
+    label: "Undo",
+    onClick: () => {
+      const i = data.emptiedLog.indexOf(entry);
+      if (i !== -1) data.emptiedLog.splice(i, 1);
+      Object.assign(data.levels[binId], previous);
+      saveData();
+      shownBinIds = "";
+      render();
+      showToast(`Undone. Bin ${binId} isn't counted as emptied.`);
+    },
+  });
 }
 
 function startLiveSensor() {
@@ -535,6 +613,7 @@ function emptyBin(binId, workerId) {
   COMPARTMENTS.forEach(({ key }) => (level[key] = 0));
   level.emptiedAt = Date.now();
   level.emptiedBy = workerId;
+  level.emptiedAuto = false;
   data.emptiedLog.unshift({ binId, workerId, at: Date.now(), before });
   data.emptiedLog.length = Math.min(data.emptiedLog.length, 2000);
 }
@@ -917,6 +996,7 @@ function renderBins() {
   const lowBattery = zoneBins.filter((bin) => isLowBattery(bin.id)).length;
   document.querySelector("#countBattery").textContent = lowBattery;
   const subtitle = `${zoneLabel} · ${zoneBins.length} bins · ${counts.full} need${counts.full === 1 ? "s" : ""} emptying${lowBattery ? ` · ${lowBattery} low battery` : ""}`;
+  document.querySelector("#autoNote").hidden = !data.settings.autoEmpty;
   const subtitleEl = document.querySelector("#binsSubtitle");
   if (subtitleEl.textContent !== subtitle) subtitleEl.textContent = subtitle;
 
@@ -938,7 +1018,9 @@ function renderBins() {
   // swallow clicks while numbers update.
   const grid = document.querySelector("#binGrid");
   const order = visible.map((bin) => bin.id);
-  const ids = binFilter + binSort + (binSort === "nearest" || binFilter === "battery" ? order : [...order].sort((a, b) => a - b)).join(",");
+  const sorted = binSort === "nearest" || binFilter === "battery" ? order : [...order].sort((a, b) => a - b);
+  // Rebuild when a sensor goes on/offline too, since that changes the buttons.
+  const ids = binFilter + binSort + data.settings.autoEmpty + sorted.map((id) => (isOnline(id) ? id : `${id}x`)).join(",");
   if (ids !== shownBinIds) {
     shownBinIds = ids;
     grid.innerHTML = visible.length
@@ -985,7 +1067,9 @@ function cardHtml(bin) {
         ${
           binFilter === "battery" && isLowBattery(bin.id)
             ? `<button type="button" class="button primary" data-action="battery" data-id="${bin.id}">${ICONS.battery}Battery replaced</button>`
-            : `<button type="button" class="button primary" data-action="empty" data-id="${bin.id}">${ICONS.check}Mark emptied</button>`
+            : data.settings.autoEmpty && isOnline(bin.id)
+              ? `<button type="button" class="button primary" data-action="directions" data-id="${bin.id}">${ICONS.nav}Directions</button>`
+              : `<button type="button" class="button primary" data-action="empty" data-id="${bin.id}">${ICONS.check}Mark emptied</button>`
         }
         <button type="button" class="button" data-action="history" data-id="${bin.id}">${ICONS.chart}History</button>
         <button type="button" class="button" data-action="map" data-id="${bin.id}">${ICONS.map}Map</button>
@@ -1031,7 +1115,7 @@ function updateCard(card, bin) {
 function emptiedText(binId) {
   const level = data.levels[binId];
   const worker = data.workers.find((w) => w.id === level.emptiedBy);
-  return `Emptied ${timeAgo(level.emptiedAt)}${worker ? ` by ${worker.name.split(" ")[0]}` : ""}`;
+  return `Emptied ${timeAgo(level.emptiedAt)}${worker ? ` by ${worker.name.split(" ")[0]}` : ""}${level.emptiedAuto ? " · auto" : ""}`;
 }
 
 document.querySelector(".summary").addEventListener("click", (event) => {
@@ -1242,8 +1326,8 @@ function popupHtml(bin) {
           : `<p class="popup-battery${isLowBattery(bin.id) ? " low" : ""}">${ICONS.battery}Sensor battery ${batteryOf(bin.id)}%${isLowBattery(bin.id) ? " · needs a new one" : ""}</p>`
       }
       <div class="popup-buttons">
-        <button type="button" class="button" data-action="directions" data-id="${bin.id}">Directions</button>
-        <button type="button" class="button primary" data-action="empty" data-id="${bin.id}">Mark emptied</button>
+        <button type="button" class="button${data.settings.autoEmpty && !offline ? " primary" : ""}" data-action="directions" data-id="${bin.id}">Directions</button>
+        <button type="button" class="button${data.settings.autoEmpty && !offline ? "" : " primary"}" data-action="empty" data-id="${bin.id}" title="Only needed if the sensor missed it">Mark emptied</button>
       </div>
       ${isLowBattery(bin.id) ? `<button type="button" class="button full-width popup-battery-button" data-action="battery" data-id="${bin.id}">${ICONS.battery}Battery replaced</button>` : ""}
       <button type="button" class="link-button" data-action="history" data-id="${bin.id}">See this bin's history</button>
@@ -1766,7 +1850,12 @@ function renderDirections(bin, { loading = false, error = "" } = {}) {
   } else if (trip.arrived) {
     body = `
       <p class="directions-arrived">You've arrived at Bin ${bin.id}.</p>
-      <button type="button" class="button primary full-width" data-action="empty" data-id="${bin.id}">Mark emptied</button>
+      ${
+        data.settings.autoEmpty && isOnline(bin.id)
+          ? `<p class="directions-auto">Empty it and Tribin will notice on its own, then show you the next bin.</p>
+             <button type="button" class="button full-width" data-action="empty" data-id="${bin.id}">Mark emptied by hand</button>`
+          : `<button type="button" class="button primary full-width" data-action="empty" data-id="${bin.id}">Mark emptied</button>`
+      }
     `;
   } else {
     const steps = trip.steps
@@ -1871,6 +1960,7 @@ function renderSettings() {
   document.querySelector("#fullAtValue").textContent = `${fullAt}%`;
   document.querySelector("#almostAt").value = almostAt;
   document.querySelector("#almostAtValue").textContent = `${almostAt}%`;
+  document.querySelector("#autoEmpty").checked = data.settings.autoEmpty;
   document.querySelector("#lowBatteryAt").value = data.settings.lowBatteryAt;
   document.querySelector("#lowBatteryAtValue").textContent = `${data.settings.lowBatteryAt}%`;
 }
@@ -1892,6 +1982,13 @@ document.querySelector("#workerRows").addEventListener("click", (event) => {
 });
 
 // Keep "almost full" below "needs emptying".
+document.querySelector("#autoEmpty").addEventListener("change", (event) => {
+  data.settings.autoEmpty = event.target.checked;
+  shownBinIds = "";
+  saveData();
+  showToast(event.target.checked ? "Bins will be marked emptied automatically." : "Workers will mark bins emptied by hand.");
+});
+
 ["fullAt", "almostAt", "lowBatteryAt"].forEach((key) => {
   document.querySelector(`#${key}`).addEventListener("input", (event) => {
     let value = Number(event.target.value);
@@ -2068,6 +2165,7 @@ document.querySelector("#liveDepth").addEventListener("change", (event) => {
   const value = Math.round(Number(event.target.value));
   data.settings.liveDepthCm = Math.min(400, Math.max(10, value || 60));
   event.target.value = data.settings.liveDepthCm;
+  data.levels[LIVE.binId].ignoreDropUntil = Date.now() + 10000;
   applyLiveReading();
   saveData();
   renderLiveStatus();
@@ -2080,6 +2178,7 @@ document.querySelector("#liveCalibrate").addEventListener("click", () => {
     return;
   }
   data.settings.liveDepthCm = Math.max(10, Math.round(liveReading.distanceCm));
+  data.levels[LIVE.binId].ignoreDropUntil = Date.now() + 10000;
   document.querySelector("#liveDepth").value = data.settings.liveDepthCm;
   applyLiveReading();
   saveData();

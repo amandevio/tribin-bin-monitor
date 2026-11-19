@@ -96,7 +96,11 @@ function heroHtml(scope) {
       </div>
       <div class="hero-actions">
         <button type="button" class="button gold" data-action="directions" data-id="${bin.id}">${ICONS.nav}Get directions</button>
-        <button type="button" class="button on-dark" data-action="empty" data-id="${bin.id}">${ICONS.check}Mark emptied</button>
+        ${
+          data.settings.autoEmpty
+            ? `<p class="hero-auto">${ICONS.check}It's marked emptied on its own when the sensor sees it's empty.</p>`
+            : `<button type="button" class="button on-dark" data-action="empty" data-id="${bin.id}">${ICONS.check}Mark emptied</button>`
+        }
         <button type="button" class="text-link" data-action="history" data-id="${bin.id}">See its history</button>
       </div>
     </div>
@@ -143,13 +147,14 @@ function activityHtml(events) {
   return events
     .slice(0, 6)
     .map((e) => {
-      const name = workerName(e.workerId);
+      const worker = data.workers.find((w) => w.id === e.workerId);
+      const how = e.auto ? " · detected by sensor" : " · tapped in the app";
       return `
         <div class="activity-item">
-          <span class="avatar small">${escapeHtml(initials(name))}</span>
+          <span class="avatar small${worker ? "" : " sensor-avatar"}">${worker ? escapeHtml(initials(worker.name)) : ICONS.check}</span>
           <div>
-            <p><b>${escapeHtml(name)}</b> emptied <b>Bin ${e.binId}</b></p>
-            <span>${escapeHtml(zoneName(e.binId))} · ${escapeHtml(timeAgo(e.at))}</span>
+            <p>${worker ? `<b>${escapeHtml(worker.name)}</b> emptied <b>Bin ${e.binId}</b>` : `<b>Bin ${e.binId}</b> was emptied`}</p>
+            <span>${escapeHtml(zoneName(e.binId))} · ${escapeHtml(timeAgo(e.at))}${how}</span>
           </div>
         </div>
       `;

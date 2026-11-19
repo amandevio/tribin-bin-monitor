@@ -13,7 +13,7 @@
     />
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
-    <link rel="stylesheet" href="style.css?v=15" />
+    <link rel="stylesheet" href="style.css?v=16" />
   </head>
 
   <body>
@@ -165,6 +165,8 @@
                   <button type="button" class="button primary" data-action="next-bin"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11l18-8-8 18-2-8z"/></svg>Go to nearest full bin</button>
               </div>
 
+              <p id="autoNote" class="auto-note"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg><span>Bins are marked emptied on their own when the sensor sees them emptied. You only need <b>Mark emptied</b> if a sensor is offline.</span></p>
+
               <div class="summary" role="group" aria-label="Show bins">
                   <button type="button" class="summary-box is-full" data-filter="full">
                       <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7.5v5"/><path d="M12 16.3v.2"/></svg>To empty <span class="summary-number" id="countFull">0</span>
@@ -291,7 +293,7 @@
                   <div class="table-wrap">
                       <table>
                           <thead>
-                              <tr><th>Emptied</th><th>By</th><th class="num">Recycle</th><th class="num">Landfill</th><th class="num">Compost</th></tr>
+                              <tr><th>Emptied</th><th>By</th><th>Recorded by</th><th class="num">Recycle</th><th class="num">Landfill</th><th class="num">Compost</th></tr>
                           </thead>
                           <tbody id="binEventRows"></tbody>
                       </table>
@@ -335,7 +337,7 @@
                   <div class="table-wrap">
                       <table>
                           <thead>
-                              <tr><th>Bin</th><th>Zone</th><th>Worker</th><th>Date and time</th><th class="num">Full when emptied</th></tr>
+                              <tr><th>Bin</th><th>Zone</th><th>Worker</th><th>Recorded by</th><th>Date and time</th><th class="num">Full when emptied</th></tr>
                           </thead>
                           <tbody id="historyRows" class="clickable-rows"></tbody>
                       </table>
@@ -398,6 +400,17 @@
                           <tbody id="zoneRows"></tbody>
                       </table>
                   </div>
+              </div>
+
+              <div class="card" data-settings-panel="system" hidden>
+                  <h2>Emptying</h2>
+                  <label class="switch-row auto-empty-row">
+                      <span>
+                          <b>Detect emptying automatically</b>
+                          <small>When a sensor sees a bin drop from full to nearly empty, it's marked emptied, with no button to press. It's credited to the worker heading there with directions, or the zone's worker.</small>
+                      </span>
+                      <input type="checkbox" id="autoEmpty" class="switch" />
+                  </label>
               </div>
 
               <div class="card" data-settings-panel="system" hidden>
@@ -489,8 +502,8 @@
     <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
     <script src="https://unpkg.com/mqtt@5.16.1/dist/mqtt.min.js"></script>
     <script src="bins.js"></script>
-    <script src="app.js?v=15"></script>
-    <script src="reports.js?v=15"></script>
-    <script src="home.js?v=15"></script>
+    <script src="app.js?v=16"></script>
+    <script src="reports.js?v=16"></script>
+    <script src="home.js?v=16"></script>
   </body>
 </html>

@@ -73,7 +73,7 @@ function binEvents(binId) {
   const speed = fillSpeed(binId);
 
   // Walk back in time from the oldest known emptying, one fill-up at a time.
-  const past = [{ binId, at: anchor, workerId: anchor === level.emptiedAt && level.emptiedBy ? level.emptiedBy : pick(), sim: true }];
+  const past = [{ binId, at: anchor, workerId: anchor === level.emptiedAt && level.emptiedBy ? level.emptiedBy : pick(), sim: true, auto: true }];
   let end = anchor;
   const stop = Date.now() - (REPORT_DAYS + 3) * DAY_MS;
   while (end > stop) {
@@ -83,7 +83,7 @@ function binEvents(binId) {
     const hour = new Date(start).getHours();
     if (hour < 6) start = startOfDay(start) - DAY_MS + (18 + random() * 1.5) * HOUR_MS;
     else if (hour >= 20) start = startOfDay(start) + (18 + random() * 1.5) * HOUR_MS;
-    past.push({ binId, at: start, workerId: pick(), sim: true });
+    past.push({ binId, at: start, workerId: pick(), sim: true, auto: true });
     end = start;
   }
 
@@ -526,13 +526,14 @@ function renderReports() {
               <td><b>Bin ${e.binId}</b></td>
               <td>${zoneTag(binZone(e.binId))}</td>
               <td>${escapeHtml(workerName(e.workerId))}</td>
+              <td>${e.auto ? "Sensor" : "Button"}</td>
               <td>${escapeHtml(fmtWhen(e.at))}</td>
               <td class="num">${fullestPeak(e)}%</td>
             </tr>
           `
         )
         .join("")
-    : '<tr><td colspan="5" class="muted">No collection history yet.</td></tr>';
+    : '<tr><td colspan="6" class="muted">No collection history yet.</td></tr>';
   document.querySelector("#historyNote").textContent =
     report.collections.length > log.length ? `Showing the latest ${log.length} of ${report.collections.length}. The Excel download has all of them.` : "";
 
@@ -590,12 +591,13 @@ function renderBinHistory(report) {
             <tr>
               <td>${escapeHtml(fmtWhen(e.at))}</td>
               <td>${escapeHtml(workerName(e.workerId))}</td>
+              <td>${e.auto ? "Sensor" : "Button"}</td>
               ${COMPARTMENTS.map(({ key }) => `<td class="num">${e.peak[key]}%</td>`).join("")}
             </tr>
           `
         )
         .join("")
-    : '<tr><td colspan="5" class="muted">Not emptied in this period.</td></tr>';
+    : '<tr><td colspan="6" class="muted">Not emptied in this period.</td></tr>';
 }
 
 // Called from app.js when the page opens and on every update tick.
@@ -704,12 +706,12 @@ function binRows(report) {
   });
 }
 
-const COLLECTION_HEADER = ["Date", "Time", "Bin", "Location", "Zone", "Worker", "Recycle % at emptying", "Landfill % at emptying", "Compost % at emptying"];
+const COLLECTION_HEADER = ["Date", "Time", "Bin", "Location", "Zone", "Worker", "Recorded by", "Recycle % at emptying", "Landfill % at emptying", "Compost % at emptying"];
 
 function collectionRows(report, limit = Infinity) {
   return report.collections.slice(0, limit).map((e) => {
     const bin = allBins.find((b) => b.id === e.binId);
-    return [fmtDate(e.at), fmtTime(e.at), e.binId, bin?.location || "", zoneName(e.binId), workerName(e.workerId), ...COMPARTMENTS.map(({ key }) => e.peak[key])];
+    return [fmtDate(e.at), fmtTime(e.at), e.binId, bin?.location || "", zoneName(e.binId), workerName(e.workerId), e.auto ? "Sensor" : "Button press", ...COMPARTMENTS.map(({ key }) => e.peak[key])];
   });
 }
 
@@ -770,7 +772,7 @@ async function downloadExcel() {
       [12, 10, 6, 44, 18, 18, 16]
     );
   }
-  addSheet("Collections", [COLLECTION_HEADER, ...collectionRows(report)], [12, 10, 6, 44, 18, 18, 20, 20, 20]);
+  addSheet("Collections", [COLLECTION_HEADER, ...collectionRows(report)], [12, 10, 6, 44, 18, 18, 14, 20, 20, 20]);
   addSheet("Workers", [["Worker", "Zone", `Bins emptied (${REPORT_DAYS} days)`, "Bins emptied today"], ...report.workers.map((w) => [w.name, w.zone, w.count, w.today])], [22, 20, 24, 20]);
 
   // Hour-by-hour readings for the bin picked on the page.
@@ -787,7 +789,7 @@ async function downloadExcel() {
         fmtDate(t),
         fmtTime(t),
         ...COMPARTMENTS.map(({ key }) => Math.round(levels[key])),
-        emptied.map((e) => `Emptied at ${fmtTime(e.at)} by ${workerName(e.workerId)}`).join("; "),
+        emptied.map((e) => `Emptied at ${fmtTime(e.at)} by ${workerName(e.workerId)}${e.auto ? " (detected by sensor)" : ""}`).join("; "),
       ]);
     }
     addSheet(`Bin ${reportState.binId} readings`, [["Date", "Time", "Recycle %", "Landfill %", "Compost %", "Emptied"], ...rows], [12, 10, 11, 11, 11, 40]);
@@ -904,7 +906,7 @@ async function downloadPdf() {
     });
   };
 
-  table(`All bins (${report.bins.length})`, BIN_HEADER, binRows(report), { 1: { cellWidth: 150 } });
+  table(`All bins (${report.bins.length})`, BIN_HEADER, binRows(report), { 1: { cellWidth: 140 } });
   table(`Bins emptied by worker (last ${REPORT_DAYS} days)`, ["Worker", "Zone", `Bins emptied (${REPORT_DAYS} days)`, "Today"], report.workers.map((w) => [w.name, w.zone, w.count, w.today]));
   const limit = 300;
   table(
