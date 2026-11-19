@@ -239,7 +239,7 @@ const MUTED_INK = "#6b766f";
 const r1 = (v) => Math.round(v * 10) / 10;
 
 function svgOpen(width, height) {
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" font-family="Instrument Sans, Helvetica, Arial, sans-serif">`;
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" font-family="Plus Jakarta Sans, Helvetica, Arial, sans-serif">`;
 }
 
 function niceScale(max, ticks = 4) {
@@ -269,7 +269,7 @@ function columnChart(days, width, height) {
 
   let svg = svgOpen(width, height);
   for (let v = 0; v <= max; v += step) {
-    svg += `<line x1="${m.left}" x2="${width - m.right}" y1="${r1(y(v))}" y2="${r1(y(v))}" stroke="${v === 0 ? "#cfc9b9" : "#ebe7dc"}" stroke-width="1"/>`;
+    svg += `<line x1="${m.left}" x2="${width - m.right}" y1="${r1(y(v))}" y2="${r1(y(v))}" stroke="${v === 0 ? "#cdd3cb" : "#e8ebe5"}" stroke-width="1"/>`;
     svg += `<text x="${m.left - 7}" y="${r1(y(v) + 4)}" text-anchor="end" font-size="11" fill="${MUTED_INK}">${v}</text>`;
   }
   const bars = days.map((day, i) => {
@@ -300,11 +300,11 @@ function lineChart({ points, emptied, from, to, width, height, fullAt }) {
 
   let svg = svgOpen(width, height);
   [0, 25, 50, 75, 100].forEach((v) => {
-    svg += `<line x1="${m.left}" x2="${m.left + w}" y1="${r1(y(v))}" y2="${r1(y(v))}" stroke="${v === 0 ? "#cfc9b9" : "#ebe7dc"}" stroke-width="1"/>`;
+    svg += `<line x1="${m.left}" x2="${m.left + w}" y1="${r1(y(v))}" y2="${r1(y(v))}" stroke="${v === 0 ? "#cdd3cb" : "#e8ebe5"}" stroke-width="1"/>`;
     svg += `<text x="${m.left - 7}" y="${r1(y(v) + 4)}" text-anchor="end" font-size="11" fill="${MUTED_INK}">${v}%</text>`;
   });
   for (let day = startOfDay(from); day < to; day = startOfDay(day + DAY_MS + 2 * HOUR_MS)) {
-    if (day > from) svg += `<line x1="${r1(x(day))}" x2="${r1(x(day))}" y1="${m.top}" y2="${m.top + h}" stroke="#f0ece2" stroke-width="1"/>`;
+    if (day > from) svg += `<line x1="${r1(x(day))}" x2="${r1(x(day))}" y1="${m.top}" y2="${m.top + h}" stroke="#eef0eb" stroke-width="1"/>`;
     const noon = day + 12 * HOUR_MS;
     if (noon > from && noon < to) {
       const label = new Date(noon).toLocaleDateString([], narrow ? { weekday: "short" } : { weekday: "short", day: "numeric" });

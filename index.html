@@ -9,11 +9,11 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
       rel="stylesheet"
-      href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@100..125,600..800&family=Instrument+Sans:wght@400..700&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400..800&display=swap"
     />
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
-    <link rel="stylesheet" href="style.css?v=12" />
+    <link rel="stylesheet" href="style.css?v=13" />
   </head>
 
   <body>
@@ -28,6 +28,8 @@
           </div>
         </div>
 
+        <p class="login-intro">Sign in to see which bins need emptying.</p>
+
         <form id="loginForm" novalidate>
           <label for="loginEmail">Campus email</label>
           <input id="loginEmail" type="email" placeholder="you@csus.edu" autocomplete="username" />
@@ -41,54 +43,111 @@
     </div>
 
     <!-- App -->
-    <div id="appScreen" hidden>
-      <header class="topbar">
-        <div class="logo logo-small">
+    <div id="appScreen" class="app-shell" hidden>
+      <!-- Sidebar on computers; becomes the tab bar at the bottom on phones -->
+      <aside class="sidebar">
+        <div class="logo">
           <span class="logo-mark"><i></i><i></i><i></i></span>
-          <strong>Tribin</strong>
+          <div>
+            <strong>Tribin</strong>
+            <span>Sac State bin monitor</span>
+          </div>
         </div>
 
-        <nav class="nav">
-          <button type="button" data-page="bins"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></svg><span>Bins</span></button>
+        <nav class="nav" aria-label="Pages">
+          <button type="button" data-page="home"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 11l8-7 8 7v8a1 1 0 0 1-1 1h-4v-6h-6v6H5a1 1 0 0 1-1-1z"/></svg><span>Home</span></button>
+          <button type="button" data-page="bins"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></svg><span>Bins</span><span id="navBadge" class="nav-badge" hidden>0</span></button>
           <button type="button" data-page="map"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg><span>Map</span></button>
           <button type="button" data-page="history"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h16M7 16v-5M12 16V6M17 16v-8"/></svg><span>Reports</span></button>
           <button type="button" data-page="settings" data-admin-only><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h9M17 6h3M4 12h3M11 12h9M4 18h11M19 18h1"/><circle cx="15" cy="6" r="2"/><circle cx="9" cy="12" r="2"/><circle cx="17" cy="18" r="2"/></svg><span>Settings</span></button>
         </nav>
 
+        <div class="user-card">
+          <span class="avatar" data-avatar></span>
+          <div class="user-text">
+            <span id="userName" class="user-name"></span>
+            <span id="userRole" class="user-role"></span>
+          </div>
+          <button type="button" class="plain-icon" data-sign-out aria-label="Sign out" title="Sign out"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3"/><path d="M10 17l5-5-5-5"/><path d="M15 12H4"/></svg></button>
+        </div>
+      </aside>
+
+      <div class="app-main">
+      <!-- Phone header -->
+      <header class="topbar">
+        <div class="logo logo-small">
+          <span class="logo-mark"><i></i><i></i><i></i></span>
+          <strong>Tribin</strong>
+        </div>
         <div class="topbar-right">
-          <span id="userName" class="user-name"></span>
-          <button type="button" id="signOut" class="button">Sign out</button>
+          <span class="avatar small" data-avatar></span>
+          <button type="button" class="plain-icon" data-sign-out aria-label="Sign out" title="Sign out"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3"/><path d="M10 17l5-5-5-5"/><path d="M15 12H4"/></svg></button>
         </div>
       </header>
 
       <main>
+          <!-- Home page -->
+          <section id="page-home" class="page">
+              <div class="home-head">
+                  <p id="homeDate" class="eyebrow"></p>
+                  <h1 id="homeGreeting" class="page-title"></h1>
+                  <p id="homeScope" class="muted"></p>
+              </div>
+
+              <div id="homeHero"></div>
+              <div id="homeTiles" class="home-tiles"></div>
+
+              <div class="home-grid">
+                  <div class="card">
+                      <div class="card-head">
+                          <h2>Up next</h2>
+                          <button type="button" class="text-link" data-home-go="full">See all bins</button>
+                      </div>
+                      <div id="homeQueue"></div>
+                  </div>
+                  <div class="card">
+                      <div class="card-head">
+                          <h2>Recent activity</h2>
+                          <button type="button" class="text-link" data-home-go="reports">Open reports</button>
+                      </div>
+                      <div id="homeActivity"></div>
+                  </div>
+              </div>
+
+              <div class="card" data-admin-only>
+                  <h2>Zones</h2>
+                  <p class="muted card-sub">How each part of campus is doing. Click a zone to see its bins.</p>
+                  <div id="homeZones" class="zone-cards"></div>
+              </div>
+          </section>
+
           <!-- Bins page -->
-          <section id="page-bins" class="page">
-              <button type="button" class="next-bin" data-action="next-bin">
-                  <span class="next-bin-arrow">&#10148;</span>
-                  <span class="next-bin-text">
-                      <strong>Go to nearest full bin</strong>
-                      <small id="nextBinHint">Walking directions to the closest bin that needs emptying</small>
-                  </span>
-              </button>
+          <section id="page-bins" class="page" hidden>
+              <div class="page-head">
+                  <div>
+                      <h1 class="page-title">Bins</h1>
+                      <p id="binsSubtitle" class="muted"></p>
+                  </div>
+                  <button type="button" class="button primary" data-action="next-bin"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11l18-8-8 18-2-8z"/></svg>Go to nearest full bin</button>
+              </div>
 
               <div class="summary" role="group" aria-label="Show bins">
                   <button type="button" class="summary-box is-full" data-filter="full">
-                      To empty <span class="summary-number" id="countFull">0</span>
+                      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7.5v5"/><path d="M12 16.3v.2"/></svg>To empty <span class="summary-number" id="countFull">0</span>
                   </button>
                   <button type="button" class="summary-box is-almost" data-filter="almost">
-                      Almost full <span class="summary-number" id="countAlmost">0</span>
+                      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>Almost full <span class="summary-number" id="countAlmost">0</span>
                   </button>
                   <button type="button" class="summary-box is-offline" data-filter="offline" data-admin-only>
-                      Offline <span class="summary-number" id="countOffline">0</span>
+                      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3l18 18"/><path d="M8.5 16.4a5 5 0 0 1 7 0"/><path d="M5 12.8a10 10 0 0 1 5-2.7"/><path d="M14.2 10.2A10 10 0 0 1 19 12.8"/><path d="M12 20h.01"/></svg>Offline <span class="summary-number" id="countOffline">0</span>
                   </button>
                   <button type="button" class="summary-box is-all" data-filter="all">
-                      All <span class="summary-number" id="countAll">0</span>
+                      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6h11M9 12h11M9 18h11M4.5 6h.01M4.5 12h.01M4.5 18h.01"/></svg>All <span class="summary-number" id="countAll">0</span>
                   </button>
               </div>
 
               <div class="toolbar">
-                  <input id="search" type="search" placeholder="Search bins" />
+                  <label class="search-field"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg><input id="search" type="search" placeholder="Search by bin number or place" aria-label="Search bins" /></label>
                   <select id="zoneFilter" aria-label="Zone"></select>
               </div>
 
@@ -252,6 +311,12 @@
 
           <!-- Settings page (admins only) -->
           <section id="page-settings" class="page" hidden>
+              <div class="page-head">
+                  <div>
+                      <h1 class="page-title">Settings</h1>
+                      <p class="muted">People, zones, alert levels and the live sensor.</p>
+                  </div>
+              </div>
               <div class="tabs settings-tabs" role="group" aria-label="Settings">
                   <button type="button" data-settings-tab="workers" class="active">Workers</button>
                   <button type="button" data-settings-tab="zones">Zones</button>
@@ -332,6 +397,7 @@
               </div>
           </section>
       </main>
+      </div>
     </div>
 
     <!-- Add / edit worker -->
@@ -381,7 +447,8 @@
     <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
     <script src="https://unpkg.com/mqtt@5.16.1/dist/mqtt.min.js"></script>
     <script src="bins.js"></script>
-    <script src="app.js?v=12"></script>
-    <script src="reports.js?v=12"></script>
+    <script src="app.js?v=13"></script>
+    <script src="reports.js?v=13"></script>
+    <script src="home.js?v=13"></script>
   </body>
 </html>

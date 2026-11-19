@@ -11,16 +11,24 @@ connection is needed for the map.
 - **Go to nearest full bin**: one big button that finds the closest bin that
   needs emptying and starts walking directions to it. After you mark it
   emptied, it offers the next closest one.
-- **Simple layout**: four pages (Bins, Map, Reports, and Settings for
-  admins). On phones they sit as big tabs along the bottom of the screen.
+- **Simple layout**: a sidebar with Home, Bins, Map, Reports, and Settings
+  (admins only). The Bins tab shows how many bins need emptying. On phones the
+  sidebar becomes big tabs along the bottom of the screen.
+- **Home**: the first page after signing in. Workers see their zone and
+  admins see the whole campus. It shows the next bin to empty, with its fill
+  levels and big **Get directions** / **Mark emptied** buttons; tappable
+  numbers (need emptying, almost full, emptied today, and sensors offline for
+  admins or "emptied by you" for workers); an **Up next** list of the next
+  five bins; recent activity; and, for admins, a card per zone showing how
+  that part of campus is doing.
 - **Sensor offline**: bins whose sensor has stopped reporting show in gray
   with the time of their last reading. Admins find them with the **Offline**
   tab on the Bins page or the status filter on the map.
 - **Bins**: every bin as a card with three fill bars. Tap **To empty**,
   **Almost full**, or **All** at the top to switch lists. Fullest bins come
-  first, or nearest first once location is allowed. Workers press **Mark
-  emptied** after emptying a bin, and can tap **Undo** for a few seconds if
-  they tapped the wrong one. The pin button shows the bin on the map.
+  first, or nearest first once location is allowed. Each bin has **Mark
+  emptied**, **History** and **Map** buttons, and **Undo** appears for a few
+  seconds in case of a wrong tap.
 - **Map**: every bin as a mini tri-bin marker with one bar per compartment
   (red = needs emptying, yellow = almost full, green = OK). Nearby bins are
   grouped into circles whose ring shows how many are full. Search, filter by
@@ -90,6 +98,7 @@ No password is needed in the demo.
 - `index.html`: page layout
 - `style.css`: colors and styling
 - `app.js`: all the logic (sign in, bins, map, workers)
+- `home.js`: the Home page
 - `reports.js`: the Reports page, its charts, and the Excel / PDF downloads
 - `bins.js`: bin locations from the project spreadsheet
 

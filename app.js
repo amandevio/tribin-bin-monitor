@@ -32,11 +32,30 @@ const PART_RATE = { recycling: 2.3, landfill: 3.2, compost: 1.3 };
 const HOUR_MS = 60 * 60 * 1000;
 const DAY_MS = 24 * HOUR_MS;
 
+// Small line icons used across the pages.
+const ICONS = {
+  home: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 11l8-7 8 7v8a1 1 0 0 1-1 1h-4v-6h-6v6H5a1 1 0 0 1-1-1z"/></svg>',
+  bins: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></svg>',
+  map: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>',
+  chart: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h16M7 16v-5M12 16V6M17 16v-8"/></svg>',
+  settings: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h9M17 6h3M4 12h3M11 12h9M4 18h11M19 18h1"/><circle cx="15" cy="6" r="2"/><circle cx="9" cy="12" r="2"/><circle cx="17" cy="18" r="2"/></svg>',
+  alert: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7.5v5"/><path d="M12 16.3v.2"/></svg>',
+  clock: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>',
+  check: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>',
+  wifiOff: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3l18 18"/><path d="M8.5 16.4a5 5 0 0 1 7 0"/><path d="M5 12.8a10 10 0 0 1 5-2.7"/><path d="M14.2 10.2A10 10 0 0 1 19 12.8"/><path d="M12 20h.01"/></svg>',
+  list: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6h11M9 12h11M9 18h11M4.5 6h.01M4.5 12h.01M4.5 18h.01"/></svg>',
+  nav: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11l18-8-8 18-2-8z"/></svg>',
+  search: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>',
+  signOut: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3"/><path d="M10 17l5-5-5-5"/><path d="M15 12H4"/></svg>',
+  user: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 20a8 8 0 0 1 16 0"/></svg>',
+  arrow: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>',
+};
+
 // Bin locations come from bins.js (the project spreadsheet).
 const allBins = Array.isArray(window.bins) ? window.bins : [];
 
 let data = loadData();
-let currentPage = "bins";
+let currentPage = "home";
 let binFilter = "full";
 let zoneFilter = "all"; // a zone id, "all", or "none"
 let searchText = "";
@@ -615,12 +634,47 @@ function showLogin() {
     .map(
       (worker) => `
         <button type="button" class="demo-account" data-worker="${worker.id}">
-          <strong>${escapeHtml(worker.name)}</strong>
-          <span>${worker.role === "admin" ? "Admin" : "Worker"}</span>
+          <span class="avatar small">${escapeHtml(initials(worker.name))}</span>
+          <span class="demo-text">
+            <strong>${escapeHtml(worker.name)}</strong>
+            <span>${escapeHtml(roleText(worker))}</span>
+          </span>
+          <span class="demo-go">${ICONS.arrow}</span>
         </button>
       `
     )
     .join("");
+}
+
+function initials(name) {
+  return name
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((part) => part[0])
+    .slice(0, 2)
+    .join("")
+    .toUpperCase();
+}
+
+function roleText(worker) {
+  const zone = zoneById(worker.zoneId);
+  return `${worker.role === "admin" ? "Admin" : "Worker"} · ${zone ? zone.name : "All campus"}`;
+}
+
+// Name, role and the "need emptying" count in the sidebar and phone header.
+function renderShell() {
+  const worker = currentUser();
+  if (!worker) return;
+  const set = (selector, text) =>
+    document.querySelectorAll(selector).forEach((el) => {
+      if (el.textContent !== text) el.textContent = text;
+    });
+  set("#userName", worker.name);
+  set("#userRole", roleText(worker));
+  set("[data-avatar]", initials(worker.name));
+  const toEmpty = allBins.filter((bin) => binStatus(bin.id) === "full" && inZone(bin.id, myZoneId() || "all")).length;
+  set("#navBadge", String(toEmpty));
+  document.querySelector("#navBadge").hidden = toEmpty === 0;
 }
 
 function signIn(workerId) {
@@ -635,10 +689,10 @@ function signIn(workerId) {
 
   document.querySelector("#loginScreen").hidden = true;
   document.querySelector("#appScreen").hidden = false;
-  document.querySelector("#userName").textContent = worker.name;
   document.querySelectorAll("[data-admin-only]").forEach((el) => (el.hidden = worker.role !== "admin"));
+  renderShell();
   shownBinIds = "";
-  showPage("bins");
+  showPage("home");
 
   // If this browser already allows location, sort by nearest right away.
   navigator.permissions?.query({ name: "geolocation" }).then((status) => {
@@ -665,20 +719,22 @@ document.querySelector("#demoAccounts").addEventListener("click", (event) => {
   if (button) signIn(Number(button.dataset.worker));
 });
 
-document.querySelector("#signOut").addEventListener("click", () => {
-  stopLocationWatch();
-  binSort = "fullest";
-  data.currentUserId = null;
-  saveData();
-  showLogin();
-});
+document.querySelectorAll("[data-sign-out]").forEach((button) =>
+  button.addEventListener("click", () => {
+    stopLocationWatch();
+    binSort = "fullest";
+    data.currentUserId = null;
+    saveData();
+    showLogin();
+  })
+);
 
 // ---------------------------------------------------------------------------
 // Pages
 // ---------------------------------------------------------------------------
 
 function showPage(page) {
-  if (page === "settings" && !isAdmin()) page = "bins";
+  if (page === "settings" && !isAdmin()) page = "home";
   currentPage = page;
 
   document.querySelectorAll(".page").forEach((section) => {
@@ -704,8 +760,8 @@ function showPage(page) {
 function setBarHeights() {
   const root = document.documentElement.style;
   root.setProperty("--topbar-height", `${document.querySelector(".topbar").offsetHeight}px`);
-  const nav = document.querySelector(".nav");
-  root.setProperty("--nav-height", `${getComputedStyle(nav).position === "fixed" ? nav.offsetHeight : 0}px`);
+  const tabs = document.querySelector(".sidebar");
+  root.setProperty("--nav-height", `${getComputedStyle(tabs).position === "fixed" ? tabs.offsetHeight : 0}px`);
 }
 
 window.addEventListener("resize", setBarHeights);
@@ -716,6 +772,8 @@ document.querySelector(".nav").addEventListener("click", (event) => {
 });
 
 function render() {
+    renderShell();
+    if (currentPage === "home" && typeof renderHome === "function") renderHome();
     if (currentPage === "bins") renderBins();
     if (currentPage === "map") renderMap();
     if (currentPage === "history" && typeof refreshReports === "function") refreshReports();
@@ -741,12 +799,10 @@ function renderBins() {
     box.classList.toggle("selected", box.dataset.filter === binFilter);
   });
 
-  const next = nearestFullBin();
-  document.querySelector("#nextBinHint").textContent = !next
-    ? "No bins need emptying right now"
-    : myLocation
-      ? `Bin ${next.id} · ${formatDistance(metersToBin(next))} away${myZoneId() && data.binZones[next.id] === myZoneId() ? " · your zone" : ""}`
-      : "Walking directions to the closest bin that needs emptying";
+  const zoneLabel = zoneFilter === "all" ? "All zones" : zoneFilter === "none" ? "No zone" : zoneById(zoneFilter)?.name || "All zones";
+  const subtitle = `${zoneLabel} · ${zoneBins.length} bins · ${counts.full} need${counts.full === 1 ? "s" : ""} emptying`;
+  const subtitleEl = document.querySelector("#binsSubtitle");
+  if (subtitleEl.textContent !== subtitle) subtitleEl.textContent = subtitle;
 
   const visible = zoneBins
     .filter((bin) => binFilter === "all" || binStatus(bin.id) === binFilter)
@@ -804,9 +860,9 @@ function cardHtml(bin) {
       </div>
       <div class="bars">${bars}</div>
       <div class="card-buttons">
-        <button type="button" class="button primary" data-action="empty" data-id="${bin.id}">Mark emptied</button>
-        <button type="button" class="button icon-button" data-action="history" data-id="${bin.id}" aria-label="Bin history" title="Bin history"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h16M7 16v-5M12 16V6M17 16v-8"/></svg></button>
-        <button type="button" class="button icon-button" data-action="map" data-id="${bin.id}" aria-label="Show on map" title="Show on map"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg></button>
+        <button type="button" class="button primary" data-action="empty" data-id="${bin.id}">${ICONS.check}Mark emptied</button>
+        <button type="button" class="button" data-action="history" data-id="${bin.id}">${ICONS.chart}History</button>
+        <button type="button" class="button" data-action="map" data-id="${bin.id}">${ICONS.map}Map</button>
       </div>
     </article>
   `;
@@ -880,7 +936,10 @@ document.addEventListener("click", (event) => {
     map?.closePopup();
     openBinHistory(binId);
   }
-  if (button.dataset.action === "directions") startDirections(binId);
+  if (button.dataset.action === "directions") {
+    if (currentPage !== "map") showPage("map");
+    startDirections(binId);
+  }
   if (button.dataset.action === "stop-directions") stopDirections();
   if (button.dataset.action === "map") {
     showPage("map");
@@ -1958,16 +2017,19 @@ document.querySelector("#workerForm").addEventListener("submit", (event) => {
 // Start
 // ---------------------------------------------------------------------------
 
-if (currentUser()) {
-  signIn(data.currentUserId);
-} else {
-  showLogin();
-}
+// Wait until reports.js and home.js have loaded too.
+window.addEventListener("DOMContentLoaded", () => {
+  if (currentUser()) {
+    signIn(data.currentUserId);
+  } else {
+    showLogin();
+  }
 
-startLiveSensor();
+  startLiveSensor();
 
-setInterval(() => {
-  readSensors();
-  saveData();
-  if (currentUser()) render();
-}, UPDATE_EVERY_SECONDS * 1000);
+  setInterval(() => {
+    readSensors();
+    saveData();
+    if (currentUser()) render();
+  }, UPDATE_EVERY_SECONDS * 1000);
+});
