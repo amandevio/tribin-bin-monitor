@@ -44,15 +44,13 @@ function fmtGap(hours) {
 // History of each bin
 // ---------------------------------------------------------------------------
 
-function zoneCrew(binId) {
-  const zoneId = data.binZones[binId];
-  const crew = data.workers.filter((w) => w.role === "worker");
-  const inZone = crew.filter((w) => w.zoneId === zoneId);
-  return inZone.length ? inZone : crew.length ? crew : data.workers;
-}
-
 function workerName(workerId) {
   return data.workers.find((w) => w.id === workerId)?.name || "Other staff";
+}
+
+// "Sensor" when it was detected automatically, otherwise who tapped Mark emptied.
+function recordedBy(event) {
+  return event.auto ? "Sensor" : workerName(event.workerId);
 }
 
 // Every time this bin was emptied, oldest first. Real "Mark emptied" presses
@@ -68,12 +66,10 @@ function binEvents(binId) {
   if (cached && cached.key === key) return cached.events;
 
   const random = seededRandom(binId * 7919 + 17);
-  const crew = zoneCrew(binId);
-  const pick = () => crew[Math.floor(random() * crew.length)]?.id ?? null;
   const speed = fillSpeed(binId);
 
   // Walk back in time from the oldest known emptying, one fill-up at a time.
-  const past = [{ binId, at: anchor, workerId: anchor === level.emptiedAt && level.emptiedBy ? level.emptiedBy : pick(), sim: true, auto: true }];
+  const past = [{ binId, at: anchor, workerId: null, sim: true, auto: true }];
   let end = anchor;
   const stop = Date.now() - (REPORT_DAYS + 3) * DAY_MS;
   while (end > stop) {
@@ -83,7 +79,7 @@ function binEvents(binId) {
     const hour = new Date(start).getHours();
     if (hour < 6) start = startOfDay(start) - DAY_MS + (18 + random() * 1.5) * HOUR_MS;
     else if (hour >= 20) start = startOfDay(start) + (18 + random() * 1.5) * HOUR_MS;
-    past.push({ binId, at: start, workerId: pick(), sim: true, auto: true });
+    past.push({ binId, at: start, workerId: null, sim: true, auto: true });
     end = start;
   }
 
@@ -196,19 +192,37 @@ function buildReport() {
     if (day) day.count++;
   });
 
-  const perWorker = new Map();
-  collections.forEach((e) => perWorker.set(e.workerId ?? null, (perWorker.get(e.workerId ?? null) || 0) + 1));
-  const workers = [...perWorker.entries()]
-    .map(([workerId, count]) => {
-      const worker = data.workers.find((w) => w.id === workerId);
+  // When in the day bins get emptied.
+  const slots = [
+    ["Before 9 am", 0, 9],
+    ["9 am to noon", 9, 12],
+    ["Noon to 3 pm", 12, 15],
+    ["3 to 6 pm", 15, 18],
+    ["After 6 pm", 18, 24],
+  ];
+  const byTime = slots.map(([name, start, end]) => ({
+    name,
+    count: collections.filter((e) => {
+      const hour = new Date(e.at).getHours();
+      return hour >= start && hour < end;
+    }).length,
+  }));
+
+  // Totals for each zone.
+  const zones = [...data.zones, { id: "none", name: "No zone" }]
+    .map((zone) => {
+      const zoneBins = bins.filter((bin) => inZone(bin.id, zone.id));
+      if (!zoneBins.length) return null;
+      const emptied = collections.filter((e) => inZone(e.binId, zone.id));
       return {
-        name: worker?.name || "Other staff",
-        zone: worker?.zoneId && zoneById(worker.zoneId) ? zoneById(worker.zoneId).name : "All campus",
-        count,
-        today: collections.filter((e) => (e.workerId ?? null) === workerId && e.at >= startOfDay(now)).length,
+        name: zone.name,
+        bins: zoneBins.length,
+        count: emptied.length,
+        today: emptied.filter((e) => e.at >= startOfDay(now)).length,
+        needEmptying: zoneBins.filter((bin) => binStatus(bin.id) === "full").length,
       };
     })
-    .sort((a, b) => b.count - a.count);
+    .filter(Boolean);
 
   const fullAtEmpty = collections.map(fullestPeak);
   return {
@@ -219,7 +233,8 @@ function buildReport() {
     metrics,
     collections,
     days,
-    workers,
+    byTime,
+    zones,
     stats: {
       today: collections.filter((e) => e.at >= startOfDay(now)).length,
       week: collections.filter((e) => e.at >= now - 7 * DAY_MS).length,
@@ -487,7 +502,7 @@ function renderReports() {
     .sort((a, b) => b.count - a.count)
     .slice(0, 8);
   document.querySelector("#topBins").innerHTML = barList(top, top[0]?.count);
-  document.querySelector("#workerBars").innerHTML = barList(report.workers.slice(0, 8), report.workers[0]?.count);
+  document.querySelector("#timeBars").innerHTML = barList(report.byTime, Math.max(...report.byTime.map((slot) => slot.count)));
 
   const shown = reportState.showAllBins ? report.bins : report.bins.slice(0, 12);
   document.querySelector("#allBinRows").innerHTML = shown.length
@@ -525,15 +540,14 @@ function renderReports() {
             <tr data-report-bin="${e.binId}">
               <td><b>Bin ${e.binId}</b></td>
               <td>${zoneTag(binZone(e.binId))}</td>
-              <td>${escapeHtml(workerName(e.workerId))}</td>
-              <td>${e.auto ? "Sensor" : "Button"}</td>
+              <td>${escapeHtml(recordedBy(e))}</td>
               <td>${escapeHtml(fmtWhen(e.at))}</td>
               <td class="num">${fullestPeak(e)}%</td>
             </tr>
           `
         )
         .join("")
-    : '<tr><td colspan="6" class="muted">No collection history yet.</td></tr>';
+    : '<tr><td colspan="5" class="muted">No collection history yet.</td></tr>';
   document.querySelector("#historyNote").textContent =
     report.collections.length > log.length ? `Showing the latest ${log.length} of ${report.collections.length}. The Excel download has all of them.` : "";
 
@@ -590,14 +604,13 @@ function renderBinHistory(report) {
           (e) => `
             <tr>
               <td>${escapeHtml(fmtWhen(e.at))}</td>
-              <td>${escapeHtml(workerName(e.workerId))}</td>
-              <td>${e.auto ? "Sensor" : "Button"}</td>
+              <td>${escapeHtml(recordedBy(e))}</td>
               ${COMPARTMENTS.map(({ key }) => `<td class="num">${e.peak[key]}%</td>`).join("")}
             </tr>
           `
         )
         .join("")
-    : '<tr><td colspan="6" class="muted">Not emptied in this period.</td></tr>';
+    : '<tr><td colspan="5" class="muted">Not emptied in this period.</td></tr>';
 }
 
 // Called from app.js when the page opens and on every update tick.
@@ -706,12 +719,12 @@ function binRows(report) {
   });
 }
 
-const COLLECTION_HEADER = ["Date", "Time", "Bin", "Location", "Zone", "Worker", "Recorded by", "Recycle % at emptying", "Landfill % at emptying", "Compost % at emptying"];
+const COLLECTION_HEADER = ["Date", "Time", "Bin", "Location", "Zone", "Recorded by", "Recycle % at emptying", "Landfill % at emptying", "Compost % at emptying"];
 
 function collectionRows(report, limit = Infinity) {
   return report.collections.slice(0, limit).map((e) => {
     const bin = allBins.find((b) => b.id === e.binId);
-    return [fmtDate(e.at), fmtTime(e.at), e.binId, bin?.location || "", zoneName(e.binId), workerName(e.workerId), e.auto ? "Sensor" : "Button press", ...COMPARTMENTS.map(({ key }) => e.peak[key])];
+    return [fmtDate(e.at), fmtTime(e.at), e.binId, bin?.location || "", zoneName(e.binId), e.auto ? "Sensor" : `Button press (${workerName(e.workerId)})`, ...COMPARTMENTS.map(({ key }) => e.peak[key])];
   });
 }
 
@@ -772,8 +785,13 @@ async function downloadExcel() {
       [12, 10, 6, 44, 18, 18, 16]
     );
   }
-  addSheet("Collections", [COLLECTION_HEADER, ...collectionRows(report)], [12, 10, 6, 44, 18, 18, 14, 20, 20, 20]);
-  addSheet("Workers", [["Worker", "Zone", `Bins emptied (${REPORT_DAYS} days)`, "Bins emptied today"], ...report.workers.map((w) => [w.name, w.zone, w.count, w.today])], [22, 20, 24, 20]);
+  addSheet("Collections", [COLLECTION_HEADER, ...collectionRows(report)], [12, 10, 6, 44, 18, 26, 20, 20, 20]);
+  addSheet(
+    "Zones",
+    [["Zone", "Bins", `Emptied (${REPORT_DAYS} days)`, "Emptied today", "Need emptying now"], ...report.zones.map((z) => [z.name, z.bins, z.count, z.today, z.needEmptying])],
+    [22, 8, 18, 16, 20]
+  );
+  addSheet("Time of day", [["Time of day", `Bins emptied (${REPORT_DAYS} days)`], ...report.byTime.map((slot) => [slot.name, slot.count])], [18, 24]);
 
   // Hour-by-hour readings for the bin picked on the page.
   if (reportState.binId) {
@@ -789,7 +807,7 @@ async function downloadExcel() {
         fmtDate(t),
         fmtTime(t),
         ...COMPARTMENTS.map(({ key }) => Math.round(levels[key])),
-        emptied.map((e) => `Emptied at ${fmtTime(e.at)} by ${workerName(e.workerId)}${e.auto ? " (detected by sensor)" : ""}`).join("; "),
+        emptied.map((e) => `Emptied at ${fmtTime(e.at)} ${e.auto ? "(detected by sensor)" : `(marked by ${workerName(e.workerId)})`}`).join("; "),
       ]);
     }
     addSheet(`Bin ${reportState.binId} readings`, [["Date", "Time", "Recycle %", "Landfill %", "Compost %", "Emptied"], ...rows], [12, 10, 11, 11, 11, 40]);
@@ -907,7 +925,11 @@ async function downloadPdf() {
   };
 
   table(`All bins (${report.bins.length})`, BIN_HEADER, binRows(report), { 1: { cellWidth: 140 } });
-  table(`Bins emptied by worker (last ${REPORT_DAYS} days)`, ["Worker", "Zone", `Bins emptied (${REPORT_DAYS} days)`, "Today"], report.workers.map((w) => [w.name, w.zone, w.count, w.today]));
+  table(
+    `Zones (last ${REPORT_DAYS} days)`,
+    ["Zone", "Bins", `Emptied (${REPORT_DAYS} days)`, "Emptied today", "Need emptying now"],
+    report.zones.map((z) => [z.name, z.bins, z.count, z.today, z.needEmptying])
+  );
   const limit = 300;
   table(
     report.collections.length > limit ? `Collections (latest ${limit} of ${report.collections.length}; the Excel download has all)` : `Collections (${report.collections.length})`,

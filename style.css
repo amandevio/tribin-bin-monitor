@@ -3829,3 +3829,8 @@ td.battery-low {
     transform: none;
   }
 }
+
+.tile-battery .tile-icon {
+  color: #c2410c;
+  background: #ffedd5;
+}

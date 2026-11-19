@@ -26,9 +26,9 @@ connection is needed for the map.
   tab on the Bins page or the status filter on the map.
 - **Automatic emptying**: workers don't have to tap anything. When a sensor
   sees a bin drop from full (40%+) to nearly empty (15% or less) on two
-  readings in a row, the bin is marked emptied. It's credited to the worker
-  who had directions to it, or to the zone's worker. A worker heading to that
-  bin is shown the next closest full bin right away. The real sensor on Bin 3
+  readings in a row, the bin is marked emptied and logged as "Sensor" (it
+  can't tell who emptied it). A worker heading to that bin is shown the next
+  closest full bin right away. The real sensor on Bin 3
   works the same way: fill the test container, empty it, and it logs itself.
   **Mark emptied** is still there for offline sensors, and admins can turn
   automatic detection off in Settings > Alerts & sensor. Reports and downloads
@@ -63,12 +63,12 @@ connection is needed for the map.
   they're emptied, how many need emptying now), a bar chart of bins emptied
   per day, and a **bin history graph** that shows how full each part of a bin
   was over the last 7 days, with dashed lines where it was emptied (hover for
-  exact numbers and who emptied it). It also has the most-emptied bins, bins
-  emptied per worker, a table of every bin, and the full collection history.
+  exact numbers). It also has the most-emptied bins, when in the day bins get
+  emptied, a table of every bin, and the full collection history.
   Open any bin's graph from the chart button on its row, the link in its map
   popup, or by clicking it in a table.
 - **Downloads**: **Excel** gives a workbook with Summary, Bins, Collections,
-  Workers and hour-by-hour readings for the selected bin. **PDF** gives a
+  Zones, Time of day and hour-by-hour readings for the selected bin. **PDF** gives a
   printable report with the charts and tables. Both follow the zone you picked.
   Readings from before you first opened the dashboard are simulated demo data
   until real sensors are connected.

@@ -382,19 +382,12 @@ function detectEmptying(binId, before) {
   if (dropped) level.pendingEmpty = { at: Date.now(), before: roundLevels(before) };
 }
 
-// Who to credit when the sensor notices an emptying: the person who had
-// directions to that bin, or the zone's only worker. Otherwise nobody.
-function autoCredit(binId) {
-  if (trip?.binId === binId && data.currentUserId) return data.currentUserId;
-  const crew = data.workers.filter((w) => w.role === "worker" && w.zoneId && w.zoneId === data.binZones[binId]);
-  return crew.length === 1 ? crew[0].id : null;
-}
-
 function recordAutoEmptied(binId, before) {
   const level = data.levels[binId];
   const wasTrip = trip?.binId === binId;
   const previous = { emptiedAt: level.emptiedAt, emptiedBy: level.emptiedBy, emptiedAuto: level.emptiedAuto };
-  const entry = { binId, workerId: autoCredit(binId), at: Date.now(), before, auto: true };
+  // The sensor can't tell who emptied it, so nobody is named.
+  const entry = { binId, workerId: null, at: Date.now(), before, auto: true };
   level.emptiedAt = entry.at;
   level.emptiedBy = entry.workerId;
   level.emptiedAuto = true;
@@ -1115,7 +1108,8 @@ function updateCard(card, bin) {
 function emptiedText(binId) {
   const level = data.levels[binId];
   const worker = data.workers.find((w) => w.id === level.emptiedBy);
-  return `Emptied ${timeAgo(level.emptiedAt)}${worker ? ` by ${worker.name.split(" ")[0]}` : ""}${level.emptiedAuto ? " · auto" : ""}`;
+  if (level.emptiedAuto) return `Emptied ${timeAgo(level.emptiedAt)} · by sensor`;
+  return `Emptied ${timeAgo(level.emptiedAt)}${worker ? ` by ${worker.name.split(" ")[0]}` : ""}`;
 }
 
 document.querySelector(".summary").addEventListener("click", (event) => {
@@ -1930,9 +1924,6 @@ function locationErrorText(error) {
 // ---------------------------------------------------------------------------
 
 function renderSettings() {
-  const emptiedToday = (workerId) =>
-    data.emptiedLog.filter((entry) => entry.workerId === workerId && isToday(entry.at)).length;
-
   document.querySelector("#workerRows").innerHTML = data.workers
     .map(
       (worker) => `
@@ -1941,7 +1932,6 @@ function renderSettings() {
           <td class="muted">${escapeHtml(worker.email)}</td>
           <td><span class="role role-${worker.role}">${worker.role === "admin" ? "Admin" : "Worker"}</span></td>
           <td>${worker.zoneId && zoneById(worker.zoneId) ? zoneTag(zoneById(worker.zoneId)) : '<span class="muted">All campus</span>'}</td>
-          <td>${emptiedToday(worker.id)}</td>
           <td class="row-buttons">
             <button type="button" class="button" data-edit="${worker.id}">Edit</button>
             ${worker.id !== data.currentUserId ? `<button type="button" class="button danger" data-remove="${worker.id}">Remove</button>` : ""}

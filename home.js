@@ -148,7 +148,7 @@ function activityHtml(events) {
     .slice(0, 6)
     .map((e) => {
       const worker = data.workers.find((w) => w.id === e.workerId);
-      const how = e.auto ? " · detected by sensor" : " · tapped in the app";
+      const how = e.auto ? " · detected by sensor" : " · marked in the app";
       return `
         <div class="activity-item">
           <span class="avatar small${worker ? "" : " sensor-avatar"}">${worker ? escapeHtml(initials(worker.name)) : ICONS.check}</span>
@@ -227,7 +227,6 @@ function renderHome() {
   const events = recentCollections(scope);
   const today = startOfDay(Date.now());
   const emptiedToday = events.filter((e) => e.at >= today).length;
-  const mineToday = data.emptiedLog.filter((e) => e.workerId === user.id && e.at >= today).length;
   setHtml(
     "homeTiles",
     [
@@ -236,7 +235,7 @@ function renderHome() {
       tileHtml("ok", ICONS.check, emptiedToday, "Emptied today", "reports"),
       isAdmin()
         ? tileHtml("offline", ICONS.wifiOff, counts.offline, "Sensors offline", "offline")
-        : tileHtml("ok", ICONS.user, mineToday, "Emptied by you today", "reports"),
+        : tileHtml("battery", ICONS.battery, lowBattery.length, "Low battery", "battery"),
     ].join("")
   );
 

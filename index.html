@@ -13,7 +13,7 @@
     />
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
-    <link rel="stylesheet" href="style.css?v=16" />
+    <link rel="stylesheet" href="style.css?v=17" />
   </head>
 
   <body>
@@ -293,7 +293,7 @@
                   <div class="table-wrap">
                       <table>
                           <thead>
-                              <tr><th>Emptied</th><th>By</th><th>Recorded by</th><th class="num">Recycle</th><th class="num">Landfill</th><th class="num">Compost</th></tr>
+                              <tr><th>Emptied</th><th>Recorded by</th><th class="num">Recycle</th><th class="num">Landfill</th><th class="num">Compost</th></tr>
                           </thead>
                           <tbody id="binEventRows"></tbody>
                       </table>
@@ -307,9 +307,9 @@
                       <div id="topBins" class="bar-list"></div>
                   </div>
                   <div class="card">
-                      <h2>Emptied by worker</h2>
-                      <p class="muted card-sub">Last 14 days.</p>
-                      <div id="workerBars" class="bar-list"></div>
+                      <h2>When bins get emptied</h2>
+                      <p class="muted card-sub">Last 14 days, by time of day.</p>
+                      <div id="timeBars" class="bar-list"></div>
                   </div>
               </div>
 
@@ -333,11 +333,11 @@
 
               <div class="card">
                   <h2>Collection history</h2>
-                  <p class="muted card-sub">Who emptied which bin, and when.</p>
+                  <p class="muted card-sub">Every time a bin was emptied, and whether the sensor or a person recorded it.</p>
                   <div class="table-wrap">
                       <table>
                           <thead>
-                              <tr><th>Bin</th><th>Zone</th><th>Worker</th><th>Recorded by</th><th>Date and time</th><th class="num">Full when emptied</th></tr>
+                              <tr><th>Bin</th><th>Zone</th><th>Recorded by</th><th>Date and time</th><th class="num">Full when emptied</th></tr>
                           </thead>
                           <tbody id="historyRows" class="clickable-rows"></tbody>
                       </table>
@@ -373,7 +373,7 @@
                   <div class="table-wrap">
                       <table>
                           <thead>
-                              <tr><th>Name</th><th>Email</th><th>Role</th><th>Zone</th><th>Emptied today</th><th></th></tr>
+                              <tr><th>Name</th><th>Email</th><th>Role</th><th>Zone</th><th></th></tr>
                           </thead>
                           <tbody id="workerRows"></tbody>
                       </table>
@@ -407,7 +407,7 @@
                   <label class="switch-row auto-empty-row">
                       <span>
                           <b>Detect emptying automatically</b>
-                          <small>When a sensor sees a bin drop from full to nearly empty, it's marked emptied, with no button to press. It's credited to the worker heading there with directions, or the zone's worker.</small>
+                          <small>When a sensor sees a bin drop from full to nearly empty, it's marked emptied, with no button to press. Workers can still mark a bin by hand if its sensor is offline.</small>
                       </span>
                       <input type="checkbox" id="autoEmpty" class="switch" />
                   </label>
@@ -502,8 +502,8 @@
     <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
     <script src="https://unpkg.com/mqtt@5.16.1/dist/mqtt.min.js"></script>
     <script src="bins.js"></script>
-    <script src="app.js?v=16"></script>
-    <script src="reports.js?v=16"></script>
-    <script src="home.js?v=16"></script>
+    <script src="app.js?v=17"></script>
+    <script src="reports.js?v=17"></script>
+    <script src="home.js?v=17"></script>
   </body>
 </html>
