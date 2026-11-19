@@ -697,6 +697,7 @@ async function goToNearestFullBin() {
 function showLogin() {
   document.querySelector("#loginScreen").hidden = false;
   document.querySelector("#appScreen").hidden = true;
+  renderLoginPreview();
 
   document.querySelector("#demoAccounts").innerHTML = data.workers
     .slice(0, 3)
@@ -744,6 +745,50 @@ function renderShell() {
   const toEmpty = allBins.filter((bin) => binStatus(bin.id) === "full" && inZone(bin.id, myZoneId() || "all")).length;
   set("#navBadge", String(toEmpty));
   document.querySelector("#navBadge").hidden = toEmpty === 0;
+}
+
+// Live campus numbers and the next bin to empty, on the sign-in screen.
+function renderLoginPreview() {
+  const setHtmlOnce = (selector, html) => {
+    const el = document.querySelector(selector);
+    if (el.dataset.html === html) return;
+    el.dataset.html = html;
+    el.innerHTML = html;
+  };
+  const counts = { full: 0, almost: 0, ok: 0, offline: 0 };
+  allBins.forEach((bin) => counts[binStatus(bin.id)]++);
+  const online = Math.round(((allBins.length - counts.offline) / allBins.length) * 100);
+  document.querySelector("#loginLive").textContent = `Live on campus · ${allBins.length} bins`;
+
+  const stat = (value, label, dot) => `<div class="preview-stat"><b>${value}</b><span><i class="${dot}"></i>${label}</span></div>`;
+  setHtmlOnce("#loginStats", stat(counts.full, "Need emptying", "dot-full") + stat(counts.almost, "Almost full", "dot-almost") + stat(`${online}%`, "Sensors online", "dot-ok"));
+
+  const next = allBins.filter((bin) => binStatus(bin.id) === "full").sort((a, b) => fullest(b.id) - fullest(a.id))[0];
+  if (!next) {
+    setHtmlOnce("#loginNext", '<p class="preview-clear">No bins need emptying right now.</p>');
+    return;
+  }
+  const bars = COMPARTMENTS.map(({ key, label }) => {
+    const value = Math.round(data.levels[next.id][key]);
+    return `
+      <div class="bar">
+        <span class="bar-label">${label}</span>
+        <div class="bar-track"><div class="bar-fill fill-${statusOf(value)}" style="width: ${value}%"></div></div>
+        <span class="bar-percent">${value}%</span>
+      </div>
+    `;
+  }).join("");
+  setHtmlOnce(
+    "#loginNext",
+    `
+      <div class="preview-next-head">
+        <strong>Fullest bin: Bin ${next.id}</strong>
+        <span class="badge badge-full">Needs emptying</span>
+      </div>
+      <p>${escapeHtml(next.location)}</p>
+      <div class="bars">${bars}</div>
+    `
+  );
 }
 
 function signIn(workerId) {
@@ -2131,5 +2176,6 @@ window.addEventListener("DOMContentLoaded", () => {
     readSensors();
     saveData();
     if (currentUser()) render();
+    else renderLoginPreview();
   }, UPDATE_EVERY_SECONDS * 1000);
 });

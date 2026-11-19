@@ -13,33 +13,66 @@
     />
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
-    <link rel="stylesheet" href="style.css?v=14" />
+    <link rel="stylesheet" href="style.css?v=15" />
   </head>
 
   <body>
     <!-- Sign in -->
-    <div id="loginScreen" class="login">
-      <div class="login-card">
-        <div class="logo">
-          <span class="logo-mark"><i></i><i></i><i></i></span>
-          <div>
-            <strong>Tribin</strong>
-            <span>Sac State bin monitor</span>
+    <div id="loginScreen" class="signin">
+      <!-- Left: what Tribin is, with live numbers from campus -->
+      <section class="signin-brand">
+        <div class="signin-motif" aria-hidden="true"><i></i><i></i><i></i></div>
+        <div class="signin-brand-inner">
+          <div class="logo logo-light">
+            <span class="logo-mark"><i></i><i></i><i></i></span>
+            <div>
+              <strong>Tribin</strong>
+              <span>Sac State bin monitor</span>
+            </div>
           </div>
+
+          <div class="signin-pitch">
+            <span class="live-chip"><i></i><span id="loginLive">Live on campus</span></span>
+            <h1>Empty the right bins at the right time.</h1>
+            <p>Tribin shows how full every Recycle, Landfill and Compost bin on campus is, so crews go straight to the ones that need it.</p>
+          </div>
+
+          <div class="preview-card">
+            <p class="preview-title">Right now on campus</p>
+            <div id="loginStats" class="preview-stats"></div>
+            <div id="loginNext" class="preview-next"></div>
+          </div>
+
+          <ul class="signin-features">
+            <li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11l18-8-8 18-2-8z"/></svg>Directions to the next full bin</li>
+            <li><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2.5" y="7.5" width="16.5" height="9" rx="2"/><path d="M21.5 10.5v3"/><path d="M6 10.5v3"/></svg>Low battery alerts</li>
+            <li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h16M7 16v-5M12 16V6M17 16v-8"/></svg>Reports you can download</li>
+          </ul>
         </div>
+      </section>
 
-        <p class="login-intro">Sign in to see which bins need emptying.</p>
+      <!-- Right: sign in -->
+      <section class="signin-panel">
+        <div class="signin-form">
+          <h2>Welcome back</h2>
+          <p class="muted">Sign in with your campus email to see your bins.</p>
 
-        <form id="loginForm" novalidate>
-          <label for="loginEmail">Campus email</label>
-          <input id="loginEmail" type="email" placeholder="you@csus.edu" autocomplete="username" />
-          <p id="loginError" class="error" hidden></p>
-          <button type="submit" class="button primary full-width">Sign in</button>
-        </form>
+          <form id="loginForm" novalidate>
+            <label for="loginEmail">Campus email</label>
+            <div class="input-icon">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3.5 6.5l8.5 6 8.5-6"/></svg>
+              <input id="loginEmail" type="email" placeholder="you@csus.edu" autocomplete="username" />
+            </div>
+            <p id="loginError" class="error" hidden></p>
+            <button type="submit" class="button primary full-width signin-button">Sign in<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button>
+          </form>
 
-        <p class="divider"><span>or use a demo account</span></p>
-        <div id="demoAccounts" class="demo-accounts"></div>
-      </div>
+          <p class="divider"><span>or explore with a demo account</span></p>
+          <div id="demoAccounts" class="demo-accounts"></div>
+          <p class="signin-note">Demo accounts don't need a password.</p>
+        </div>
+        <p class="signin-footer">CSC 131 project · Sacramento State</p>
+      </section>
     </div>
 
     <!-- App -->
@@ -456,8 +489,8 @@
     <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
     <script src="https://unpkg.com/mqtt@5.16.1/dist/mqtt.min.js"></script>
     <script src="bins.js"></script>
-    <script src="app.js?v=14"></script>
-    <script src="reports.js?v=14"></script>
-    <script src="home.js?v=14"></script>
+    <script src="app.js?v=15"></script>
+    <script src="reports.js?v=15"></script>
+    <script src="home.js?v=15"></script>
   </body>
 </html>
